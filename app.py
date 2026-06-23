@@ -85,8 +85,10 @@ def read_current_user(current_user: schemas.User = Depends(auth.get_current_user
 @app.post("/api/v1/auth/logout")
 def logout():
     # In a more secure implementation, we might add the token to a blacklist
-    # For now, we just return a success message since JWT is stateless
-    return {"message": "Logged out successfully"}
+    # For now, we just redirect to home page since JWT is stateless
+    # Use 303 See Other to convert POST to GET for the redirect
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/", status_code=303)
 
 
 @app.get("/users/", response_model=List[schemas.User])
@@ -211,7 +213,8 @@ def read_tag(tag_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Tag not found")
     return db_tag
 
-# Home page
+
+# Landing page (home page)
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
      return templates.TemplateResponse(
@@ -232,13 +235,20 @@ async def login_page(request: Request):
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
     return templates.TemplateResponse(
+        request=request,
+        name="register.html"
+    )
+
+
+# Main application interface (requires authentication)
+@app.get("/app", response_class=HTMLResponse)
+async def app_index(request: Request):
+     return templates.TemplateResponse(
     request=request,
-    name="register.html"
+    name="app.html"
 )
 
 
 # Mount the static frontend at /. html=True lets StaticFiles resolve "/" to
 # index.html automatically, so we get a clean SPA-style entry point.
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
- 

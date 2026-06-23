@@ -1,5 +1,4 @@
 // Application coordinator - manages state and connects components
-console.log("APP.JS LOADED");
 import { lists, tasks as initialTasks, todayISO } from './data.js';
 import { renderSidebar } from './sidebar.js';
 import { renderTaskList } from './tasks.js';
@@ -215,26 +214,35 @@ function handleLogin() {
 
 async function handleLogout() {
   try {
-    const response = await fetch('/api/v1/auth/logout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+    await fetch('/api/v1/auth/logout', {
+      method: 'POST'
     });
+  } catch (error) {
+    console.error('Logout request failed:', error);
+    // Continue to clear state and redirect even if request fails
+  }
 
-    if (!response.ok) {
-      throw new Error('Logout failed');
-    }
-
+  try {
     // Clear localStorage
     localStorage.removeItem('access_token');
     // Update state
     state.user = null;
-    // Re-render
-    render();
+    // Redirect to home page
+    window.location.href = '/';
   } catch (error) {
-    console.error('Logout error:', error);
-    alert('Logout failed. Please try again.');
+    console.error('Logout cleanup failed, attempting redirect anyway:', error);
+    // Even if cleanup fails, try to redirect
+    try {
+      window.location.href = '/';
+    } catch (e) {
+      console.error('Logout redirect failed:', e);
+      // Last resort - try to reload the page which might redirect based on state
+      try {
+        location.reload();
+      } catch (e2) {
+        console.error('Logout reload also failed:', e2);
+      }
+    }
   }
 }
 

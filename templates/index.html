@@ -24,14 +24,12 @@
             sans: ['Inter', 'system-ui', 'sans-serif'],
           },
           colors: {
-            beige: '#F6F3ED',
-            sidebar: '#F1ECE3',
-            border: '#D8D1C7',
-            ink: '#1F1F1F',
-            muted: '#7A746D',
-            prioHigh: '#A9332A',
-            prioMed: '#C17B21',
-            prioLow: '#2E7D32',
+            beige: '#F5F2ED',
+            'dark-bg': '#161311',
+            'primary-text': '#1A1716',
+            'secondary-text': '#7A6E61',
+            'accent-red': '#8B1E1E',
+            border: '#D8D2CB',
           },
         },
       },
@@ -40,118 +38,184 @@
 
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
-<body class="bg-beige font-sans text-ink antialiased min-h-screen">
-  <!-- Desktop: 3-column grid. Below lg: stacks vertically. -->
-  <div class="lg:grid lg:grid-cols-[20%_35%_45%] lg:h-screen">
+<body class="bg-beige font-sans text-primary-text antialiased min-h-screen">
+  <!-- Hero Section -->
+  <section class="text-center py-12 lg:py-18">
+    <h1 class="text-4xl lg:text-5xl xl:text-6xl font-display font-bold text-primary-text mb-12 leading-tight">
+        <span class="block text-accent-red">TASKMASTER</span>
+      </h1>
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
 
-    <!-- Sidebar -->
-    <aside
-      id="sidebar"
-      aria-label="Primary navigation"
-      class="bg-sidebar border-b lg:border-b-0 lg:border-r border-border p-6 flex flex-col gap-8 lg:h-screen lg:overflow-y-auto"
-    ></aside>
+      <!-- Large headline -->
+      <h1 class="text-2xl lg:text-2xl xl:text-4xl font-display font-bold text-primary-text mb-6 leading-tight">
+        <span class="block">The discipline of getting</span>
+        <span class="block text-accent-red">things done.</span>
+      </h1>
 
-    <!-- Task list panel -->
-    <main
-      id="task-list-panel"
-      aria-label="Task list"
-      class="bg-beige p-6 lg:p-8 lg:h-screen lg:overflow-y-auto lg:border-r border-border"
-    ></main>
+      <!-- Supporting description -->
+      <p class="text-sm lg:text-sm text-secondary-text max-w-xl mx-auto mb-10">
+        Taskmaster helps professionals manage their work with clarity and focus.
+        Built for serious work, without the noise.
+      </p>
 
-    <!-- Details panel -->
-    <section
-      id="task-details-panel"
-      aria-label="Task details"
-      aria-live="polite"
-      class="bg-beige p-6 lg:p-10 lg:h-screen lg:overflow-y-auto"
-    ></section>
-  </div>
-
-  <!-- New-task modal (native <dialog> for free focus trapping + ESC handling) -->
-  <dialog
-    id="new-task-dialog"
-    aria-labelledby="new-task-title"
-    class="rounded-2xl border border-border bg-white p-0 shadow-xl backdrop:bg-ink/30 max-w-md w-full"
-  >
-    <form id="new-task-form" method="dialog" class="p-6 flex flex-col gap-4">
-      <h2 id="new-task-title" class="font-display text-2xl font-semibold">New task</h2>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-sm text-muted">Title</span>
-        <input
-          type="text"
-          name="title"
-          required
-          autocomplete="off"
-          class="border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ink/30"
-        />
-      </label>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-sm text-muted">Due date</span>
-        <input
-          type="date"
-          name="dueDate"
-          class="border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ink/30"
-        />
-      </label>
-
-      <fieldset class="flex flex-col gap-2">
-        <legend class="text-sm text-muted">Priority</legend>
-        <div class="flex gap-4">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="priority" value="high" class="accent-prioHigh" />
-            <span class="flex items-center gap-1">
-              <span class="w-2.5 h-2.5 rounded-full bg-prioHigh"></span>
-              High
-            </span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="priority" value="medium" checked class="accent-prioMed" />
-            <span class="flex items-center gap-1">
-              <span class="w-2.5 h-2.5 rounded-full bg-prioMed"></span>
-              Medium
-            </span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="priority" value="low" class="accent-prioLow" />
-            <span class="flex items-center gap-1">
-              <span class="w-2.5 h-2.5 rounded-full bg-prioLow"></span>
-              Low
-            </span>
-          </label>
-        </div>
-      </fieldset>
-
-      <label class="flex flex-col gap-1">
-        <span class="text-sm text-muted">Tags (comma separated)</span>
-        <input
-          type="text"
-          name="tags"
-          autocomplete="off"
-          placeholder="e.g. work, finance"
-          class="border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ink/30"
-        />
-      </label>
-
-      <div class="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          id="cancel-new-task"
-          class="px-4 py-2 rounded-lg text-muted hover:bg-beige transition-colors duration-200"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          class="px-4 py-2 rounded-lg bg-ink text-white hover:bg-ink/85 transition-colors duration-200"
-        >
-          Add task
-        </button>
+      <!-- Primary and Secondary CTA Buttons -->
+      <div class="flex flex-col sm:flex-row sm:gap-4 justify-center">
+        <a href="/register" class="flex-1 px-6 py-3 bg-primary-text text-white rounded-lg font-medium hover:bg-primary-text/90 transition-colors duration-200 flex items-center justify-center">
+          Start for free
+        </a>
+        <a href="/login" class="flex-1 px-6 py-3 border border-border text-primary-text rounded-lg font-medium hover:bg-beige/50 transition-colors duration-200 flex items-center justify-center">
+          Sign in to your account
+        </a>
       </div>
-    </form>
-  </dialog>
 
-  <script type="module" src="/static/js/app.js"></script>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="py-10 ">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Section Header -->
+      <div class="text-center mb-16">
+        <span class="inline-block px-3 py-1 text-xs font-medium text-accent-red bg-accent-red/10 rounded-full mb-4">
+          WHY TASKMASTER
+        </span>
+        <h2 class="text-3xl lg:text-4xl font-display font-bold text-primary-text mb-4">
+          Built for serious work
+        </h2>
+      </div>
+
+      <!-- Feature Grid -->
+      <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <!-- Feature Card 1: Structured Lists -->
+        <div class="border border-border rounded-lg p-6 hover:border-primary-text/20 transition-colors duration-200">
+          <div class="flex flex-col items-start gap-4">
+            <div class="flex items-start gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-red/10 flex-shrink-0">
+                <span class="text-accent-red font-bold text-xl">1</span>
+              </div>
+              <h3 class="font-display font-semibold text-lg text-primary-text">Structured Lists</h3>
+            </div>
+            <p class="text-secondary-text text-sm leading-relaxed">
+              Organize your work with nested lists, dependencies, and priorities that reflect how you actually work.
+            </p>
+          </div>
+        </div>
+
+        <!-- Feature Card 2: Rich Task Detail -->
+        <div class="border border-border rounded-lg p-6 hover:border-primary-text/20 transition-colors duration-200">
+          <div class="flex flex-col items-start gap-4">
+            <div class="flex items-start gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-red/10 flex-shrink-0">
+                <span class="text-accent-red font-bold text-xl">2</span>
+              </div>
+              <h3 class="font-display font-semibold text-lg text-primary-text">Rich Task Detail</h3>
+            </div>
+            <p class="text-secondary-text text-sm leading-relaxed">
+              Capture every detail with rich text descriptions, file attachments, and custom fields that adapt to your workflow.
+            </p>
+          </div>
+        </div>
+
+        <!-- Feature Card 3: Desktop-first -->
+        <div class="border border-border rounded-lg p-6 hover:border-primary-text/20 transition-colors duration-200">
+          <div class="flex flex-col items-start gap-4">
+            <div class="flex items-start gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-red/10 flex-shrink-0">
+                <span class="text-accent-red font-bold text-xl">3</span>
+              </div>
+              <h3 class="font-display font-semibold text-lg text-primary-text">Desktop-first</h3>
+            </div>
+            <p class="text-secondary-text text-sm leading-relaxed">
+              Experience a native-like desktop application with keyboard shortcuts and powerful search.
+            </p>
+          </div>
+        </div>
+
+        <!-- Feature Card 4: Smart Views -->
+        <div class="border border-border rounded-lg p-6 hover-border-primary-text/20 transition-colors duration-200">
+          <div class="flex flex-col items-start gap-4">
+            <div class="flex items-start gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-red/10 flex-shrink-0">
+                <span class="text-accent-red font-bold text-xl">4</span>
+              </div>
+              <h3 class="font-display font-semibold text-lg text-primary font-semibold text-lg text-primary-text">Smart Views</h3>
+            </div>
+            <p class="text-secondary-text text-sm leading-relaxed">
+              Save and switch between custom views of your tasks — by project, priority, due date, or any combination.
+            </p>
+          </div>
+        </div>
+
+        <!-- Feature Card 5: Classical Aesthetic -->
+        <div class="border border-border rounded-lg p-6 hover-border-primary-text/20 transition-colors duration-200">
+          <div class="flex flex-col items-start gap-4">
+            <div class="flex items-start gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-red/10 flex-shrink-0">
+                <span class="text-accent-red font-bold text-xl">5</span>
+              </div>
+              <h3 class="font-display font-semibold text-lg text-primary-text">Classical Aesthetic</h3>
+            </div>
+            <p class="text-secondary-text text-sm leading-relaxed">
+              A timeless interface that respects your focus — beautiful typography, thoughtful spacing, and zero distractions.
+            </p>
+          </div>
+        </div>
+
+        <!-- Feature Card 6: No Subscription Lock-in -->
+        <div class="border border-border rounded-lg p-6 hover-border-primary-text/20 transition-colors duration-200">
+          <div class="flex flex-col items-start gap-4">
+            <div class="flex items-start gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-red/10 flex-shrink-0">
+                <span class="text-accent-red font-bold text-xl">6</span>
+              </div>
+              <h3 class="font-display font-semibold text-lg text-primary-text">No Subscription Lock-in</h3>
+            </div>
+            <p class="text-secondary-text text-sm leading-relaxed">
+              Own your data forever. Export anytime, self-host if you choose, and never lose access to your work.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="bg-dark-bg text-white py-20 lg:py-24">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h2 class="text-3xl lg:text-4xl font-display font-bold mb-6">
+        Ready to work with clarity?
+      </h2>
+      <p class="text-lg lg:text-xl text-white/90 max-w-xl mx-auto mb-10">
+        Join thousands of professionals who manage their work with Taskmaster.
+      </p>
+      <a href="/register" class="inline-block px-6 py-3 bg-white text-dark-bg rounded-lg font-medium hover:bg-white/90 transition-colors duration-200">
+        Create your free account →
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-border py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row lg:justify-between lg:items-center">
+      <div class="flex flex-col items-center lg:items-start lg:mb-0 mb-6">
+        <!-- Logo icon (simple text logo for now) -->
+        <div class="flex items-center gap-2 mb-4">
+          <span class="text-accent-red font-bold text-xl">TM</span>
+          <span class="font-display font-bold text-lg">Taskmaster</span>
+        </div>
+        <p class="text-center text-sm text-secondary-text">
+          © 2026 Taskmaster. All rights reserved.
+        </p>
+      </div>
+
+      <div class="hidden lg:flex lg:space-x-8">
+        <nav class="space-x-8">
+          <a href="#" class="text-sm text-secondary-text hover:text-primary-text transition-colors duration-200">Privacy</a>
+          <a href="#" class="text-sm text-secondary-text hover:text-primary-text transition-colors duration-200">Terms</a>
+          <a href="#" class="text-sm text-secondary-text hover:text-primary-text transition-colors duration-200">Contact</a>
+        </nav>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>
