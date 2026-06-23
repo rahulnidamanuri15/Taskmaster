@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Taskmaster</title>
+
+  <!-- Fonts: Playfair Display for headings, Inter for body -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Tailwind via Play CDN (no build step). Custom theme tokens below. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"Playfair Display"', 'serif'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            beige: '#F6F3ED',
+            sidebar: '#F1ECE3',
+            border: '#D8D1C7',
+            ink: '#1F1F1F',
+            muted: '#7A746D',
+            prioHigh: '#A9332A',
+            prioMed: '#C17B21',
+            prioLow: '#2E7D32',
+          },
+        },
+      },
+    };
+  </script>
+
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body class="bg-beige font-sans text-ink antialiased min-h-screen">
+  <!-- Desktop: 3-column grid. Below lg: stacks vertically. -->
+  <div class="lg:grid lg:grid-cols-[20%_35%_45%] lg:h-screen">
+
+    <!-- Sidebar -->
+    <aside
+      id="sidebar"
+      aria-label="Primary navigation"
+      class="bg-sidebar border-b lg:border-b-0 lg:border-r border-border p-6 flex flex-col gap-8 lg:h-screen lg:overflow-y-auto"
+    ></aside>
+
+    <!-- Task list panel -->
+    <main
+      id="task-list-panel"
+      aria-label="Task list"
+      class="bg-beige p-6 lg:p-8 lg:h-screen lg:overflow-y-auto lg:border-r border-border"
+    ></main>
+
+    <!-- Details panel -->
+    <section
+      id="task-details-panel"
+      aria-label="Task details"
+      aria-live="polite"
+      class="bg-beige p-6 lg:p-10 lg:h-screen lg:overflow-y-auto"
+    ></section>
+  </div>
+
+  <!-- New-task modal (native <dialog> for free focus trapping + ESC handling) -->
+  <dialog
+    id="new-task-dialog"
+    aria-labelledby="new-task-title"
+    class="rounded-2xl border border-border bg-white p-0 shadow-xl backdrop:bg-ink/30 max-w-md w-full"
+  >
+    <form id="new-task-form" method="dialog" class="p-6 flex flex-col gap-4">
+      <h2 id="new-task-title" class="font-display text-2xl font-semibold">New task</h2>
+
+      <label class="flex flex-col gap-1">
+        <span class="text-sm text-muted">Title</span>
+        <input
+          type="text"
+          name="title"
+          required
+          autocomplete="off"
+          class="border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ink/30"
+        />
+      </label>
+
+      <label class="flex flex-col gap-1">
+        <span class="text-sm text-muted">Due date</span>
+        <input
+          type="date"
+          name="dueDate"
+          class="border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ink/30"
+        />
+      </label>
+
+      <fieldset class="flex flex-col gap-2">
+        <legend class="text-sm text-muted">Priority</legend>
+        <div class="flex gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="priority" value="high" class="accent-prioHigh" />
+            <span class="flex items-center gap-1">
+              <span class="w-2.5 h-2.5 rounded-full bg-prioHigh"></span>
+              High
+            </span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="priority" value="medium" checked class="accent-prioMed" />
+            <span class="flex items-center gap-1">
+              <span class="w-2.5 h-2.5 rounded-full bg-prioMed"></span>
+              Medium
+            </span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="priority" value="low" class="accent-prioLow" />
+            <span class="flex items-center gap-1">
+              <span class="w-2.5 h-2.5 rounded-full bg-prioLow"></span>
+              Low
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
+      <label class="flex flex-col gap-1">
+        <span class="text-sm text-muted">Tags (comma separated)</span>
+        <input
+          type="text"
+          name="tags"
+          autocomplete="off"
+          placeholder="e.g. work, finance"
+          class="border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ink/30"
+        />
+      </label>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button
+          type="button"
+          id="cancel-new-task"
+          class="px-4 py-2 rounded-lg text-muted hover:bg-beige transition-colors duration-200"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="px-4 py-2 rounded-lg bg-ink text-white hover:bg-ink/85 transition-colors duration-200"
+        >
+          Add task
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

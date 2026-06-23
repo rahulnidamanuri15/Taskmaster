@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Taskmaster</title>
+
+  <!-- Fonts: Playfair Display for headings, Inter for body -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Tailwind via Play CDN (no build step). Custom theme tokens below. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"Playfair Display"', 'serif'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            beige: '#F6F3ED',
+            sidebar: '#F1ECE3',
+            border: '#D8D1C7',
+            ink: '#1F1F1F',
+            muted: '#7A746D',
+            prioHigh: '#A9332A',
+            prioMed: '#C17B21',
+            prioLow: '#2E7D32',
+          },
+        },
+      },
+    };
+  </script>
+
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <style>
+    /* Custom styles for auth pages */
+    .logo-square {
+      width: 2.5rem;
+      height: 2.5rem;
+      background-color: #1A1816;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 0.75rem;
+    }
+
+    .logo-letter {
+      color: white;
+      font-weight: bold;
+      font-size: 1.5rem;
+    }
+
+    .auth-container {
+      max-width: 420px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    .input-group {
+      position: relative;
+    }
+
+    .input-icon {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #7A746D;
+      cursor: pointer;
+    }
+
+    .input-icon:hover {
+      color: #1F1F1F;
+    }
+  </style>
+</head>
+<body class="bg-beige font-sans text-ink antialiased min-h-screen flex items-center justify-center">
+  <div class="auth-container">
+    <!-- Logo and Title -->
+    <div class="flex items-center mb-6">
+      <div class="logo-square">
+        <span class="logo-letter">T</span>
+      </div>
+      <span class="text-2xl font-display font-semibold">TaskMaster</span>
+    </div>
+
+    <!-- Welcome Section -->
+    <div class="text-center mb-8">
+      <h1 class="text-2xl font-display font-semibold mb-2">Welcome back</h1>
+      <p class="text-muted text-lg">Sign in to continue to your workspace.</p>
+    </div>
+
+    <!-- Login Form -->
+    <form id="login-form" class="space-y-6">
+      <!-- Email Input -->
+      <div class="space-y-2">
+        <label for="email" class="block text-sm font-medium text-muted">Email Address</label>
+        <div class="input-group">
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            placeholder="Email"
+            class="w-full px-4 py-3 border border-border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-ink/30"
+          />
+          <!-- Eye icon for show/hide password will be in password field -->
+        </div>
+        <p id="email-error" class="text-sm text-red-500 hidden"></p>
+      </div>
+
+      <!-- Password Input -->
+      <div class="space-y-2">
+        <label for="password" class="block text-sm font-medium text-muted">Password</label>
+        <div class="input-group">
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            minlength="8"
+            placeholder="Password"
+            class="w-full px-4 py-3 border border-border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-ink/30"
+          />
+          <button
+            type="button"
+            id="toggle-password"
+            class="input-icon"
+            aria-label="Show/hide password"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+              <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </div>
+        <p id="password-error" class="text-sm text-red-500 hidden"></p>
+      </div>
+
+      <!-- Remember Me and Forgot Password -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="remember-me"
+            name="remember-me"
+            class="h-4 w-4 text-ink focus:ring-ink/30"
+          />
+          <label for="remember-me" class="text-sm text-muted">Remember me</label>
+        </div>
+        <div>
+          <a
+            href="/forgot-password.html"
+            class="text-sm text-muted hover:text-ink transition-colors"
+          >
+            Forgot Password?
+          </a>
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        id="login-button"
+        class="w-full bg-ink text-white px-4 py-3 rounded-lg font-medium hover:bg-ink/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Sign in 
+      </button>
+    </form>
+
+    <!-- Bottom Section -->
+    <div class="mt-8 text-center text-sm">
+      <p class="text-muted">
+        No account? <a href="/register" class="text-ink font-medium hover:text-ink/80 transition-colors">Create one</a>
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-12 text-center text-xs text-muted">© 2026 TaskMaster. All rights reserved.</div>
+  </div>
+
+  <script>
+    // Password toggle functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const togglePassword = document.getElementById('toggle-password');
+      const passwordField = document.getElementById('password');
+
+      togglePassword.addEventListener('click', function() {
+        const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordField.setAttribute('type', type);
+
+        // Toggle icon
+        const icon = this.querySelector('svg');
+        if (type === 'password') {
+          icon.innerHTML = '<path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10z" clip-rule="evenodd" />';
+        } else {
+          icon.innerHTML = '<path fill-rule="evenodd" d="M10 12a2.25 2.25 0 100-4.5 2.25 2.25 0 000 4.5z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1.5 12a6 6 0 0112 0M12 7.5V3m0 0 0 0m0 0a3 3 0 11-3 3h-4.5a3 3 0 01-3-3V3m0 0 0 0m0 0a3 3 0 103-3h4.5a3 3 0 003 3v4.5z" />';
+        }
+      });
+    });
+
+    // Form submission handling
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      // Get form data
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const rememberMe = document.getElementById('remember-me').checked;
+
+      // Reset errors
+      document.getElementById('email-error').textContent = '';
+      document.getElementById('email-error').classList.add('hidden');
+      document.getElementById('password-error').textContent = '';
+      document.getElementById('password-error').classList.add('hidden');
+
+      // Simple client-side validation
+      let isValid = true;
+
+      if (!email) {
+        document.getElementById('email-error').textContent = 'Email is required';
+        document.getElementById('email-error').classList.remove('hidden');
+        isValid = false;
+      } else if (!/^\S+@\S+\.\S+$/.test(email)) {
+        document.getElementById('email-error').textContent = 'Invalid email address';
+        document.getElementById('email-error').classList.remove('hidden');
+        isValid = false;
+      }
+
+      if (!password) {
+        document.getElementById('password-error').textContent = 'Password is required';
+        document.getElementById('password-error').classList.remove('hidden');
+        isValid = false;
+      } else if (password.length < 8) {
+        document.getElementById('password-error').textContent = 'Password must be at least 8 characters';
+        document.getElementById('password-error').classList.remove('hidden');
+        isValid = false;
+      }
+
+      if (!isValid) {
+        return;
+      }
+
+      // Show loading state
+      const submitButton = document.getElementById('login-button');
+      const originalText = submitButton.innerHTML;
+      submitButton.innerHTML = 'Signing In...';
+      submitButton.disabled = true;
+
+      // Prepare data for API
+      const loginData = {
+        email: email,
+        password: password,
+        remember_me: rememberMe
+      };
+
+      // Send request to backend
+      fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginData)
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(err => { throw err; });
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Store token in localStorage or cookie
+        localStorage.setItem('access_token', data.access_token);
+
+        // Redirect to dashboard/main app
+        window.location.href = '/';
+      })
+      .catch(error => {
+        console.error('Login error:', error);
+
+        // Show error message
+        if (error.detail) {
+          // Backend validation error
+          if (error.detail.includes('email') || error.detail.includes('password')) {
+            document.getElementById('password-error').textContent = error.detail;
+            document.getElementById('password-error').classList.remove('hidden');
+          } else {
+            alert(error.detail);
+          }
+        } else {
+          alert('An error occurred during login. Please try again.');
+        }
+
+        // Reset button state
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
+      })
+      .finally(() => {
+        // Ensure button is reset
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
+      });
+    });
+  </script>
+</body>
+</html>

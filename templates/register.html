@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register - Taskmaster</title>
+
+  <!-- Fonts: Playfair Display for headings, Inter for body -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Tailwind via Play CDN (no build step). Custom theme tokens below. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"Playfair Display"', 'serif'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            beige: '#F6F3ED',
+            sidebar: '#F1ECE3',
+            border: '#D8D1C7',
+            ink: '#1F1F1F',
+            muted: '#7A746D',
+            prioHigh: '#A9332A',
+            prioMed: '#C17B21',
+            prioLow: '#2E7D32',
+          },
+        },
+      },
+    };
+  </script>
+
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <style>
+    /* Custom styles for auth pages */
+    .logo-square {
+      width: 2.5rem;
+      height: 2.5rem;
+      background-color: #1A1816;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 0.75rem;
+    }
+
+    .logo-letter {
+      color: white;
+      font-weight: bold;
+      font-size: 1.5rem;
+    }
+
+    .auth-container {
+      max-width: 420px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    .input-group {
+      position: relative;
+    }
+
+    .input-icon {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #7A746D;
+      cursor: pointer;
+    }
+
+    .input-icon:hover {
+      color: #1F1F1F;
+    }
+  </style>
+</head>
+<body class="bg-beige font-sans text-ink antialiased min-h-screen flex items-center justify-center">
+  <div class="auth-container">
+    <!-- Logo and Title -->
+    <div class="flex items-center mb-6">
+      <div class="logo-square">
+        <span class="logo-letter">T</span>
+      </div>
+      <span class="text-2xl font-display font-semibold">TaskMaster</span>
+    </div>
+
+    <!-- Welcome Section -->
+    <div class="text-center mb-8">
+      <h1 class="text-2xl font-display font-semibold mb-2">Create account</h1>
+      <p class="text-muted text-lg">Start organizing your tasks and projects.</p>
+    </div>
+
+    <!-- Registration Form -->
+    <form id="register-form" class="space-y-6">
+      <!-- Full Name Input -->
+      <div class="space-y-2">
+        <label for="full-name" class="block text-sm font-medium text-muted">Full Name</label>
+        <input
+          type="text"
+          id="full-name"
+          name="full-name"
+          required
+          minlength="3"
+          placeholder="Name"
+          class="w-full px-4 py-3 border border-border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-ink/30"
+        />
+        <p id="full-name-error" class="text-sm text-red-500 hidden"></p>
+      </div>
+
+      <!-- Email Input -->
+      <div class="space-y-2">
+        <label for="email" class="block text-sm font-medium text-muted">Email Address</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          required
+          placeholder="Email"
+          class="w-full px-4 py-3 border border-border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-ink/30"
+        />
+        <p id="email-error" class="text-sm text-red-500 hidden"></p>
+      </div>
+
+      <!-- Password Input -->
+      <div class="space-y-2">
+        <label for="password" class="block text-sm font-medium text-muted">Password</label>
+        <div class="input-group">
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            minlength="8"
+            placeholder="Password"
+            class="w-full px-4 py-3 border border-border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-ink/30"
+          />
+          <button
+            type="button"
+            id="toggle-password"
+            class="input-icon"
+            aria-label="Show/hide password"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+              <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </div>
+        <p id="password-error" class="text-sm text-red-500 hidden"></p>
+        <p class="text-xs text-muted mt-1">Must contain at least one letter and one number</p>
+      </div>
+
+      <!-- Confirm Password Input -->
+      <div class="space-y-2">
+        <label for="confirm-password" class="block text-sm font-medium text-muted">Confirm Password</label>
+        <div class="input-group">
+          <input
+            type="password"
+            id="confirm-password"
+            name="confirm-password"
+            required
+            minlength="8"
+            placeholder="Password"
+            class="w-full px-4 py-3 border border-border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-ink/30"
+          />
+          <button
+            type="button"
+            id="toggle-confirm-password"
+            class="input-icon"
+            aria-label="Show/hide password"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+              <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </div>
+        <p id="confirm-password-error" class="text-sm text-red-500 hidden"></p>
+      </div>
+
+      <!-- Terms Checkbox -->
+      <div class="flex items-start space-x-3 mb-4">
+        <input
+          type="checkbox"
+          id="terms-checkbox"
+          name="terms-checkbox"
+          required
+          class="h-4 w-4 text-ink focus:ring-ink/30 mt-1"
+        />
+        <div>
+          <label for="terms-checkbox" class="text-sm text-muted flex items-center">
+            I agree to the
+            <a href="#" class="text-ink underline hover:text-ink/80 transition-colors">
+              Terms and Conditions
+            </a>
+          </label>
+          <p id="terms-error" class="text-sm text-red-500 hidden mt-1">You must agree to the terms</p>
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        id="register-button"
+        class="w-full bg-ink text-white px-4 py-3 rounded-lg font-medium hover:bg-ink/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Create Account
+      </button>
+    </form>
+
+    <!-- Bottom Section -->
+    <div class="mt-8 text-center text-sm">
+      <p class="text-muted">
+        Already have an account? <a href="/login" class="text-ink font-medium hover:text-ink/80 transition-colors">Sign in</a>
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-12 text-center text-xs text-muted">
+      © 2026 TaskMaster. All rights reserved.
+    </div>
+  </div>
+
+  <script>
+    // Password toggle functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const togglePassword = document.getElementById('toggle-password');
+      const passwordField = document.getElementById('password');
+
+      const toggleConfirmPassword = document.getElementById('toggle-confirm-password');
+      const confirmPasswordField = document.getElementById('confirm-password');
+
+      togglePassword.addEventListener('click', function() {
+        const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordField.setAttribute('type', type);
+
+        // Toggle icon
+        const icon = this.querySelector('svg');
+        if (type === 'password') {
+          icon.innerHTML = '<path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10z" clip-rule="evenodd" />';
+        } else {
+          icon.innerHTML = '<path fill-rule="evenodd" d="M10 12a2.25 2.25 0 1000-4.5 2.25 2.25 0 000 4.5z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1.5 12a6 6 0 0112 0M12 7.5V3m0 0 0 0m0 0a3 3 0 11-3 3h-4.5a3 3 0 01-3-3V3m0 0 0 0m0 0a3 3 0 103-3h4.5a3 3 0 003 3v4.5z" />';
+        }
+      });
+
+      toggleConfirmPassword.addEventListener('click', function() {
+        const type = confirmPasswordField.getAttribute('type') === 'password' ? 'text' : 'password';
+        confirmPasswordField.setAttribute('type', type);
+
+        // Toggle icon
+        const icon = this.querySelector('svg');
+        if (type === 'password') {
+          icon.innerHTML = '<path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10z" clip-rule="evenodd" />';
+        } else {
+          icon.innerHTML = '<path fill-rule="evenodd" d="M10 12a2.25 2.25 0 1000-4.5 2.25 2.25 0 000 4.5z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1.5 12a6 6 0 0112 0M12 7.5V3m0 0 0 0m0 0a3 3 0 11-3 3h-4.5a3 3 0 01-3-3V3m0 0 0 0m0 0a3 3 0 103-3h4.5a3 3 0 003 3v4.5z" />';
+        }
+      });
+    });
+
+    // Form submission handling
+    document.getElementById('register-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      // Get form data
+      const fullName = document.getElementById('full-name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirm-password').value;
+      const termsChecked = document.getElementById('terms-checkbox').checked;
+
+      // Reset errors
+      document.getElementById('full-name-error').textContent = '';
+      document.getElementById('full-name-error').classList.add('hidden');
+      document.getElementById('email-error').textContent = '';
+      document.getElementById('email-error').classList.add('hidden');
+      document.getElementById('password-error').textContent = '';
+      document.getElementById('password-error').classList.add('hidden');
+      document.getElementById('confirm-password-error').textContent = '';
+      document.getElementById('confirm-password-error').classList.add('hidden');
+      document.getElementById('terms-error').textContent = '';
+      document.getElementById('terms-error').classList.add('hidden');
+
+      // Simple client-side validation
+      let isValid = true;
+
+      if (!fullName) {
+        document.getElementById('full-name-error').textContent = 'Full name is required';
+        document.getElementById('full-name-error').classList.remove('hidden');
+        isValid = false;
+      } else if (fullName.length < 3) {
+        document.getElementById('full-name-error').textContent = 'Full name must be at least 3 characters';
+        document.getElementById('full-name-error').classList.remove('hidden');
+        isValid = false;
+      }
+
+      if (!email) {
+        document.getElementById('email-error').textContent = 'Email is required';
+        document.getElementById('email-error').classList.remove('hidden');
+        isValid = false;
+      } else if (!/^\S+@\S+\.\S+$/.test(email)) {
+        document.getElementById('email-error').textContent = 'Invalid email address';
+        document.getElementById('email-error').classList.remove('hidden');
+        isValid = false;
+      }
+
+      if (!password) {
+        document.getElementById('password-error').textContent = 'Password is required';
+        document.getElementById('password-error').classList.remove('hidden');
+        isValid = false;
+      } else if (password.length < 8) {
+        document.getElementById('password-error').textContent = 'Password must be at least 8 characters';
+        document.getElementById('password-error').classList.remove('hidden');
+        isValid = false;
+      } else if (!/[a-zA-Z]/.test(password)) {
+        document.getElementById('password-error').textContent = 'Password must contain at least one letter';
+        document.getElementById('password-error').classList.remove('hidden');
+        isValid = false;
+      } else if (!/[0-9]/.test(password)) {
+        document.getElementById('password-error').textContent = 'Password must contain at least one number';
+        document.getElementById('password-error').classList.remove('hidden');
+        isValid = false;
+      }
+
+      if (!confirmPassword) {
+        document.getElementById('confirm-password-error').textContent = 'Please confirm your password';
+        document.getElementById('confirm-password-error').classList.remove('hidden');
+        isValid = false;
+      } else if (password !== confirmPassword) {
+        document.getElementById('confirm-password-error').textContent = 'Passwords do not match';
+        document.getElementById('confirm-password-error').classList.remove('hidden');
+        isValid = false;
+      }
+
+      if (!termsChecked) {
+        document.getElementById('terms-error').textContent = 'You must agree to the terms';
+        document.getElementById('terms-error').classList.remove('hidden');
+        isValid = false;
+      }
+
+      if (!isValid) {
+        return;
+      }
+
+      // Show loading state
+      const submitButton = document.getElementById('register-button');
+      const originalText = submitButton.innerHTML;
+      submitButton.innerHTML = 'Creating Account...';
+      submitButton.disabled = true;
+
+      // Prepare data for API
+      const registerData = {
+        full_name: fullName,
+        email: email,
+        password: password,
+        confirm_password: confirmPassword
+      };
+
+      // Send request to backend
+      fetch('/api/v1/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(registerData)
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(err => { throw err; });
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Registration successful - redirect to login
+        window.location.href = '/login';
+      })
+      .catch(error => {
+        console.error('Registration error:', error);
+
+        // Show error message
+        if (error.detail) {
+          // Backend validation error
+          if (error.detail.includes('email')) {
+            document.getElementById('email-error').textContent = error.detail;
+            document.getElementById('email-error').classList.remove('hidden');
+          } else if (error.detail.includes('password')) {
+            document.getElementById('password-error').textContent = error.detail;
+            document.getElementById('password-error').classList.remove('hidden');
+          } else {
+            alert(error.detail);
+          }
+        } else {
+          alert('An error occurred during registration. Please try again.');
+        }
+
+        // Reset button state
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
+      })
+      .finally(() => {
+        // Ensure button is reset
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
+      });
+    });
+  </script>
+</body>
+</html>

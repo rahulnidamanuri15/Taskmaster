@@ -1,0 +1,81 @@
+/* Taskmaster — custom CSS layer
+ * Only what Tailwind can't do cleanly. Tailwind handles the rest via the
+ * Play CDN + the inline config in index.html.
+ */
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Visible keyboard focus on every interactive element. The :focus-visible
+ * pseudo-class means this only shows during keyboard navigation, not on
+ * mouse clicks — which keeps the design clean. */
+*:focus-visible {
+  outline: 2px solid #1f1f1f;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Strip the default focus ring from inputs inside forms — they have their
+ * own Tailwind ring utilities applied. */
+input:focus-visible,
+button:focus-visible {
+  outline: none;
+}
+
+/* Custom scrollbar for the task list & sidebar so they blend with the
+ * beige theme instead of showing the default chrome scrollbar. */
+#task-list-panel::-webkit-scrollbar,
+#sidebar::-webkit-scrollbar,
+#task-details-panel::-webkit-scrollbar {
+  width: 8px;
+}
+#task-list-panel::-webkit-scrollbar-track,
+#sidebar::-webkit-scrollbar-track,
+#task-details-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+#task-list-panel::-webkit-scrollbar-thumb,
+#sidebar::-webkit-scrollbar-thumb,
+#task-details-panel::-webkit-scrollbar-thumb {
+  background: #d8d1c7;
+  border-radius: 4px;
+}
+#task-list-panel::-webkit-scrollbar-thumb:hover,
+#sidebar::-webkit-scrollbar-thumb:hover,
+#task-details-panel::-webkit-scrollbar-thumb:hover {
+  background: #7a746d;
+}
+
+/* Smooth checkbox tick. Native checkboxes otherwise snap immediately. */
+input[type="checkbox"] {
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+/* Priority indicator dot — sits flush with the card's left edge. */
+.priority-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+}
+
+/* Native <details> marker removal (we draw our own chevron). */
+details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Native <dialog> animation. The dialog element is hidden by default, so
+ * we don't need to override [open] on first render. */
+dialog[open] {
+  animation: dialogIn 200ms ease-out;
+}
+@keyframes dialogIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

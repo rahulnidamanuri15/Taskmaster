@@ -1,0 +1,226 @@
+
+"""
+CRUD operations for TaskMaster entities.
+"""
+from sqlalchemy.orm import Session
+from typing import List, Optional
+import models
+import schemas
+from auth import get_password_hash
+
+
+# User CRUD
+def get_user(db: Session, user_id: int):
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+
+def get_user_by_email(db: Session, email: str):
+    return db.query(models.User).filter(models.User.email == email).first()
+
+
+def get_users(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.User).offset(skip).limit(limit).all()
+
+
+def create_user(db: Session, user: schemas.UserCreate):
+    hashed_password = get_password_hash(user.password)
+    db_user = models.User(
+        full_name=user.full_name,
+        email=user.email,
+        password_hash=hashed_password,
+        is_active=1  # Active by default
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+def update_user(db: Session, user_id: int, user: schemas.UserUpdate):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user:
+        update_data = user.dict(exclude_unset=True)
+        if "password" in update_data:
+            update_data["password_hash"] = get_password_hash(update_data.pop("password"))
+        for key, value in update_data.items():
+            setattr(db_user, key, value)
+        db.commit()
+        db.refresh(db_user)
+    return db_user
+
+
+def delete_user(db: Session, user_id: int):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user:
+        db.delete(db_user)
+        db.commit()
+    return db_user
+
+
+# List CRUD
+def get_list(db: Session, list_id: int):
+    return db.query(models.List).filter(models.List.id == list_id).first()
+
+
+def get_lists_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.List).filter(models.List.user_id == user_id).offset(skip).limit(limit).all()
+
+
+def create_list(db: Session, list_: schemas.ListCreate, user_id: int):
+    db_list = models.List(**list_.dict(), user_id=user_id)
+    db.add(db_list)
+    db.commit()
+    db.refresh(db_list)
+    return db_list
+
+
+def update_list(db: Session, list_id: int, list_: schemas.ListUpdate):
+    db_list = db.query(models.List).filter(models.List.id == list_id).first()
+    if db_list:
+        update_data = list_.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_list, key, value)
+        db.commit()
+        db.refresh(db_list)
+    return db_list
+
+
+def delete_list(db: Session, list_id: int):
+    db_list = db.query(models.List).filter(models.List.id == list_id).first()
+    if db_list:
+        db.delete(db_list)
+        db.commit()
+    return db_list
+
+
+# Task CRUD
+def get_task(db: Session, task_id: int):
+    return db.query(models.Task).filter(models.Task.id == task_id).first()
+
+
+def get_tasks_by_user(
+    db: Session,
+    user_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    status: Optional[schemas.StatusEnum] = None,
+    priority: Optional[schemas.PriorityEnum] = None,
+    list_id: Optional[int] = None
+):
+    query = db.query(models.Task).filter(models.Task.user_id == user_id)
+
+    if status:
+        query = query.filter(models.Task.status == status)
+    if priority:
+        query = query.filter(models.Task.priority == priority)
+    if list_id:
+        query = query.filter(models.Task.list_id == list_id)
+
+    return query.offset(skip).limit(limit).all()
+
+
+def create_task(db: Session, task: schemas.TaskCreate, user_id: int):
+    db_task = models.Task(**task.dict(), user_id=user_id)
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+    return db_task
+
+
+def update_task(db: Session, task_id: int, task: schemas.TaskUpdate):
+    db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if db_task:
+        update_data = task.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_task, key, value)
+        db.commit()
+        db.refresh(db_task)
+    return db_task
+
+
+def delete_task(db: Session, task_id: int):
+    db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if db_task:
+        db.delete(db_task)
+        db.commit()
+    return db_task
+
+
+# Tag CRUD
+def get_tag(db: Session, tag_id: int):
+    return db.query(models.Tag).filter(models.Tag.id == tag_id).first()
+
+
+def get_tags_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.Tag).filter(models.Tag.user_id == user_id).offset(skip).limit(limit).all()
+
+
+def create_tag(db: Session, tag: schemas.TagCreate, user_id: int):
+    db_tag = models.Tag(**tag.dict(), user_id=user_id)
+    db.add(db_tag)
+    db.commit()
+    db.refresh(db_tag)
+    return db_tag
+
+
+def update_tag(db: Session, tag_id: int, tag: schemas.TagUpdate):
+    db_tag = db.query(models.Tag).filter(models.Tag.id == tag_id).first()
+    if db_tag:
+        update_data = tag.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_tag, key, value)
+        db.commit()
+        db.refresh(db_tag)
+    return db_tag
+
+
+def delete_tag(db: Session, tag_id: int):
+    db_tag = db.query(models.Tag).filter(models.Tag.id == tag_id).first()
+    if db_tag:
+        db.delete(db_tag)
+        db.commit()
+    return db_tag
+
+
+# TaskTag operations
+def add_tag_to_task(db: Session, task_id: int, tag_id: int):
+    # Check if association already exists
+    existing = db.execute(
+        models.task_tags.select().where(
+            models.task_tags.c.task_id == task_id,
+            models.task_tags.c.tag_id == tag_id
+        )
+    ).first()
+
+    if not existing:
+        db.execute(
+            models.task_tags.insert().values(
+                task_id=task_id,
+                tag_id=tag_id
+            )
+        )
+        db.commit()
+
+
+def remove_tag_from_task(db: Session, task_id: int, tag_id: int):
+    db.execute(
+        models.task_tags.delete().where(
+            models.task_tags.c.task_id == task_id,
+            models.task_tags.c.tag_id == tag_id
+        )
+    )
+    db.commit()
+
+
+def get_tags_for_task(db: Session, task_id: int):
+    return db.query(models.Tag).join(
+        models.task_tags,
+        models.Tag.id == models.task_tags.c.tag_id
+    ).filter(models.task_tags.c.task_id == task_id).all()
+
+
+def get_tasks_for_tag(db: Session, tag_id: int):
+    return db.query(models.Task).join(
+        models.task_tags,
+        models.Task.id == models.task_tags.c.task_id
+    ).filter(models.task_tags.c.tag_id == tag_id).all()
