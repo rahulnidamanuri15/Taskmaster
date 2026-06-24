@@ -15,9 +15,10 @@ let state = {
     // List views will be dynamically added based on data.lists
   },
   activeView: 'inbox', // Currently active view
-  tasks: [...initialTasks], // Working copy of tasks (will be mutated)
+  tasks: [], // Will be populated after auth check - either from API or mock data
   selectedTaskId: null, // Currently selected task for details panel
   user: null, // Logged-in user data
+  editingTaskId: null, // ID of task currently being edited (for description)
 };
 
 // DOM elements
@@ -128,12 +129,13 @@ function handleCancelNewTask() {
   newTaskForm.reset();
 }
 
-function handleSubmitNewTask(e) {
+async function handleSubmitNewTask(e) {
   e.preventDefault();
 
   // Get form data
   const formData = new FormData(newTaskForm);
   const title = formData.get('title').trim();
+  const description = formData.get('description').trim();
   const dueDate = formData.get('dueDate') || null;
   const priority = formData.get('priority') || 'medium';
   const tagsInput = formData.get('tags').trim();
@@ -145,32 +147,109 @@ function handleSubmitNewTask(e) {
     return;
   }
 
-  // Create new task
-  const newTask = {
-    id: Date.now(), // Simple ID generation (not ideal but works for demo)
-    title,
-    dueDate: dueDate || undefined, // Convert empty string to undefined
-    tags,
-    priority,
-    listId: 'work', // Default to work list - could be made configurable
-    completed: false,
-    description: '', // Could be added to form if needed
-    notes: '', // Could be added to form if needed
-    activity: [{
-      at: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      text: 'You created this task'
-    }]
-  };
+  // Check if user is logged in
+  if (!state.user) {
+    alert('Please log in to create a task');
+    handleLogin(); // This redirects to login page
+    return;
+  }
 
-  // Add to tasks
-  state.tasks.push(newTask);
+  try {
+    // Fetch user's lists to get a valid list_id
+    const listsResponse = await fetch(`/users/${state.user.id}/lists/`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
 
-  // Close dialog and reset form
-  newTaskDialog.close();
-  newTaskForm.reset();
+    if (!listsResponse.ok) {
+      throw new Error('Failed to fetch user lists');
+    }
 
-  // Re-render to show new task
-  render();
+    let lists = await listsResponse.json();
+
+    // If user has no lists, create a default "Inbox" list
+    let listId;
+    if (lists.length === 0) {
+      // Create a default list
+      const createListResponse = await fetch(`/users/${state.user.id}/lists/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        },
+        body: JSON.stringify({ name: 'Inbox' })
+      });
+
+      if (!createListResponse.ok) {
+        throw new Error('Failed to create default list');
+      }
+
+      const createdList = await createListResponse.json();
+      listId = createdList.id;
+
+      // Add the new list to our local lists array for consistency
+      lists.push(createdList);
+    } else {
+      // Use the first list's id
+      listId = lists[0].id;
+    }
+
+    // Prepare task data for API
+    const taskData = {
+      title: title,
+      description: description,
+      priority: priority, // already lowercase, matches enum
+      status: 'pending', // default status
+      due_date: dueDate ? new Date(dueDate).toISOString() : null, // Convert to ISO string
+      list_id: listId
+    };
+
+    const response = await fetch(`/users/${state.user.id}/tasks/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      },
+      body: JSON.stringify(taskData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to create task: ${response.status}`);
+    }
+
+    const createdTask = await response.json();
+
+    // Convert backend task to frontend task object
+    const frontendTask = {
+      id: createdTask.id,
+      title: createdTask.title,
+      description: createdTask.description || '',
+      dueDate: createdTask.due_date ? new Date(createdTask.due_date).toISOString().slice(0, 10) : null,
+      tags: [], // TODO: implement tags
+      priority: createdTask.priority,
+      listId: String(createdTask.list_id), // Convert to string to match mock data format
+      completed: createdTask.status === 'completed',
+      notes: '',
+      activity: [{
+        at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+        text: 'You created this task'
+      }]
+    };
+
+    // Add the converted task to state.tasks
+    state.tasks.push(frontendTask);
+
+    // Close dialog and reset form
+    newTaskDialog.close();
+    newTaskForm.reset();
+
+    // Re-render to show new task
+    render();
+  } catch (error) {
+    console.error('Error creating task:', error);
+    alert('Failed to create task. Please try again.');
+  }
 }
 
 // Authentication handlers
@@ -263,7 +342,55 @@ function init() {
   });
 
   // Check auth status and set user state
-  checkAuthStatus().then(() => {
+  checkAuthStatus().then(async () => {
+    // Fetch user tasks if logged in
+    if (state.user) {
+      try {
+        const response = await fetch(`/users/${state.user.id}/tasks/`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          }
+        });
+        if (response.ok) {
+          const fetchedTasks = await response.json();
+          // Convert backend tasks to frontend format
+          state.tasks = fetchedTasks.map(task => ({
+            id: task.id,
+            title: task.title,
+            description: task.description || '',
+            dueDate: task.due_date ? new Date(task.due_date).toISOString().slice(0, 10) : null,
+            tags: [], // TODO: implement tags
+            priority: task.priority,
+            listId: String(task.list_id),
+            completed: task.status === 'completed',
+            notes: '',
+            activity: [{
+              at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+              text: 'Task loaded from database'
+            }]
+          }));
+        } else {
+          console.warn('Failed to fetch tasks, using mock data');
+          state.tasks = [...initialTasks];
+        }
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+        state.tasks = [...initialTasks];
+      }
+    } else {
+      // Not logged in, use mock data
+      state.tasks = [...initialTasks];
+    }
+
+    // Initialize list views in state (needs to happen after tasks are set for proper filtering?)
+    // Actually, list views depend on the lists data, not tasks data
+    lists.forEach(list => {
+      state.views[`list-${list.id}`] = {
+        name: list.name,
+        icon: null // We could import icons if needed, but sidebar renders them internally
+      };
+    });
+
     // Initial render
     render();
   });
@@ -310,7 +437,13 @@ function render() {
 
   // Render details panel
   const selectedTask = state.tasks.find(task => task.id === state.selectedTaskId);
-  renderDetails(detailsEl, { task: selectedTask });
+  const taskForDetails = selectedTask
+    ? {
+        ...selectedTask,
+        isEditing: selectedTask && state.editingTaskId === selectedTask.id
+      }
+    : null;
+  renderDetails(detailsEl, { task: taskForDetails });
 }
 
 // Start the application when the DOM is loaded
@@ -322,3 +455,33 @@ if (document.readyState === 'loading') {
 
 // Export state for debugging purposes (optional)
 window.__TASKMASTER_STATE__ = state;
+
+// Event listeners for description editing
+detailsEl.addEventListener('taskEditRequested', (e) => {
+  state.editingTaskId = e.detail.taskId;
+  render();
+});
+
+detailsEl.addEventListener('taskEditCancelled', (e) => {
+  state.editingTaskId = null;
+  render();
+});
+
+detailsEl.addEventListener('taskDescriptionUpdated', (e) => {
+  const { taskId, description, updatedTask } = e.detail;
+
+  // Update the task in state.tasks
+  const taskIndex = state.tasks.findIndex(task => task.id === taskId);
+  if (taskIndex !== -1) {
+    state.tasks[taskIndex] = {
+      ...state.tasks[taskIndex],
+      description: description
+    };
+  }
+
+  // Clear editing state
+  state.editingTaskId = null;
+
+  // Re-render to show updated task
+  render();
+});

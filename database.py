@@ -4,14 +4,17 @@ Database configuration and session management for TaskMaster.
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # SQLite database URL
 SQLALCHEMY_DATABASE_URL = "sqlite:///./taskmaster.db"
 
 # Create engine with foreign key support for SQLite
+# Using StaticPool for SQLite with check_same_thread=False
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
     echo=False  # Set to True for SQL debugging
 )
 

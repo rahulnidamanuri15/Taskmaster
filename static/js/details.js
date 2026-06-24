@@ -26,7 +26,7 @@ function defaultState() {
       </div>
       <h2 class="font-display text-2xl font-semibold mb-2">Select a task</h2>
       <p class="text-sm text-muted leading-relaxed">
-        Click any task to view details, add notes, set priority, manage due dates.
+        Click any task to view details, set priority, manage due dates.
       </p>
     </div>
   `;
@@ -60,9 +60,22 @@ function selectedState(task) {
       <!-- Description -->
       <section class="mb-8">
         <h3 class="text-xs uppercase tracking-widest text-muted mb-2">Description</h3>
-        <p class="text-sm leading-relaxed text-ink">
-          ${task.description || 'No description yet.'}
-        </p>
+        <div class="description-container relative">
+          <div class="description-text text-sm leading-relaxed text-ink min-h-[3rem] ${task.isEditing ? 'hidden' : ''}"
+               contenteditable="false">
+            ${task.description || 'No description yet.'}
+          </div>
+          <textarea class="description-edit textarea w-full min-h-[3rem] text-sm leading-relaxed text-ink border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ink/30 ${!task.isEditing ? 'hidden' : ''}"
+                    placeholder="Add a description...">${task.description || ''}</textarea>
+          <button class="description-btn mt-2 px-4 py-1 bg-ink text-white text-sm font-medium text-sm font-medium rounded hover:bg-ink/85 transition-colors duration-200 ${!task.isEditing ? 'hidden' : ''}"
+                  id="save-description-btn">
+            Save
+          </button>
+          <button class="description-btn mt-2 px-4 py-1 bg-sidebar text-medium text-sm font-medium rounded hover:bg-sidebar/80 transition-colors duration-200 ${!task.isEditing ? 'hidden' : ''}"
+                  id="cancel-description-btn">
+            Cancel
+          </button>
+        </div>
       </section>
 
       <!-- Tags -->
@@ -77,17 +90,6 @@ function selectedState(task) {
           </div>
         </section>
       ` : ''}
-
-      <!-- Notes -->
-      <section class="mb-8">
-        <h3 class="text-xs uppercase tracking-widest text-muted mb-2">Notes</h3>
-        <div class="rounded-lg border border-border bg-white p-3 min-h-[5rem]">
-          <p class="text-sm leading-relaxed text-ink whitespace-pre-wrap
-                    ${task.notes ? '' : 'italic text-muted'}">
-            ${task.notes || 'Add a note…'}
-          </p>
-        </div>
-      </section>
 
       <!-- Activity -->
       <section>
@@ -109,4 +111,101 @@ function selectedState(task) {
 
 export function renderDetails(root, { task }) {
   root.innerHTML = task ? selectedState(task) : defaultState();
+
+  // If we have a task and it's in editing mode, set up event listeners
+  if (task && task.isEditing) {
+    const descText = root.querySelector('.description-text');
+    const descEdit = root.querySelector('.description-edit');
+    const saveBtn = root.querySelector('#save-description-btn');
+    const cancelBtn = root.querySelector('#cancel-description-btn');
+
+    // Focus the textarea when entering edit mode
+    descEdit.focus();
+    // Select all text for easy replacement
+    descEdit.select();
+
+    // Save button handler
+    saveBtn.addEventListener('click', async () => {
+      const newDescription = descEdit.value.trim();
+
+      try {
+        // Call API to update task description
+        const response = await fetch(`/tasks/${task.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          },
+          body: JSON.stringify({ description: newDescription })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to update description: ${response.status}`);
+        }
+
+        const updatedTask = await response.json();
+
+        // Find the task in state and update it
+        // We need to access the app state - this will be done via a callback
+        // For now, we'll trigger a custom event that app.js can listen for
+        const updateEvent = new CustomEvent('taskDescriptionUpdated', {
+          detail: {
+            taskId: task.id,
+            description: newDescription,
+            updatedTask: {
+              ...updatedTask,
+              description: updatedTask.description || '',
+              dueDate: updatedTask.due_date ? new Date(updatedTask.due_date).toISOString().slice(0, 10) : null,
+              priority: updatedTask.priority,
+              listId: String(updatedTask.list_id),
+              completed: updatedTask.status === 'completed'
+            }
+          }
+        });
+        root.dispatchEvent(updateEvent);
+
+      } catch (error) {
+        console.error('Error updating description:', error);
+        alert('Failed to update description. Please try again.');
+      }
+    });
+
+    // Cancel button handler
+    cancelBtn.addEventListener('click', () => {
+      // Trigger event to cancel editing
+      const cancelEvent = new CustomEvent('taskEditCancelled', {
+        detail: { taskId: task.id }
+      });
+      root.dispatchEvent(cancelEvent);
+    });
+
+    // Handle Enter key (shift+enter for newline, enter alone to submit)
+    descEdit.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault(); // Prevent newline
+        saveBtn.click();
+      }
+    });
+
+    // Handle Escape key to cancel
+    descEdit.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        cancelBtn.click();
+      }
+    });
+  } else if (task && !task.isEditing) {
+    // Make description clickable to enter edit mode
+    const descContainer = root.querySelector('.description-container');
+    const descText = root.querySelector('.description-text');
+
+    descContainer.style.cursor = 'pointer';
+    descContainer.title = 'Click to edit description';
+
+    descContainer.addEventListener('click', () => {
+      const editEvent = new CustomEvent('taskEditRequested', {
+        detail: { taskId: task.id }
+      });
+      root.dispatchEvent(editEvent);
+    });
+  }
 }

@@ -3,6 +3,17 @@
  * Play CDN + the inline config in index.html.
  */
 
+:root {
+  --color-beige: #F6F3ED;
+  --color-sidebar: #F1ECE3;
+  --color-border: #D8D1C7;
+  --color-ink: #1F1F1F;
+  --color-muted: #7A746D;
+  --color-prioHigh: #A9332A;
+  --color-prioMed: #C17B21;
+  --color-prioLow: #2E7D32;
+}
+
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -12,7 +23,7 @@ html {
  * pseudo-class means this only shows during keyboard navigation, not on
  * mouse clicks — which keeps the design clean. */
 *:focus-visible {
-  outline: 2px solid #1f1f1f;
+  outline: 2px solid var(--color-ink);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -39,13 +50,13 @@ button:focus-visible {
 #task-list-panel::-webkit-scrollbar-thumb,
 #sidebar::-webkit-scrollbar-thumb,
 #task-details-panel::-webkit-scrollbar-thumb {
-  background: #d8d1c7;
+  background: var(--color-border);
   border-radius: 4px;
 }
 #task-list-panel::-webkit-scrollbar-thumb:hover,
 #sidebar::-webkit-scrollbar-thumb:hover,
 #task-details-panel::-webkit-scrollbar-thumb:hover {
-  background: #7a746d;
+  background: var(--color-muted);
 }
 
 /* Smooth checkbox tick. Native checkboxes otherwise snap immediately. */
