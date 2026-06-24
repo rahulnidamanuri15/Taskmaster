@@ -3,6 +3,25 @@
 
 import { PRIORITY_COLOR } from './sidebar.js';
 
+// Inline SVG icons
+const ICON_DELETE = `
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+       stroke-linejoin="round" aria-hidden="true" class="w-5 h-5">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+    <line x1="10" y1="11" x2="10" y2="17"/>
+    <line x1="14" y1="11" x2="14" y2="17"/>
+  </svg>`;
+
+const ICON_CLOSE = `
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+       stroke-linejoin="round" aria-hidden="true" class="w-5 h-5">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>`;
+
 function formatDueDate(iso) {
   if (!iso) return 'No due date';
   const [y, m, d] = iso.split('-').map(Number);
@@ -35,6 +54,20 @@ function defaultState() {
 function selectedState(task) {
   const priorityLabel = task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
   return `
+    <header class="flex items-center justify-between px-6 pt-4 pb-2 border-b">
+      <div class="flex items-center gap-2">
+        <input type="checkbox" id="complete-checkbox" ${task.completed ? 'checked' : ''} />
+        <span class="text-sm">Completed</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="delete-btn" class="p-2 rounded-hover hover:bg-sidebar/80" aria-label="Delete task">
+          ${ICON_DELETE}
+        </button>
+        <button id="close-btn" class="p-2 rounded-hover hover:bg-sidebar/80" aria-label="Close">
+          ${ICON_CLOSE}
+        </button>
+      </div>
+    </header>
     <article class="max-w-2xl mx-auto">
       <!-- Title -->
       <header class="mb-6">
@@ -146,9 +179,8 @@ export function renderDetails(root, { task }) {
         const updatedTask = await response.json();
 
         // Find the task in state and update it
-        // We need to access the app state - this will be done via a callback
-        // For now, we'll trigger a custom event that app.js can listen for
-        const updateEvent = new CustomEvent('taskDescriptionUpdated', {
+        // We need to trigger a custom event that app.js can listen for
+ const updateEvent = new CustomEvent('taskDescriptionUpdated', {
           detail: {
             taskId: task.id,
             description: newDescription,
@@ -163,7 +195,6 @@ export function renderDetails(root, { task }) {
           }
         });
         root.dispatchEvent(updateEvent);
-
       } catch (error) {
         console.error('Error updating description:', error);
         alert('Failed to update description. Please try again.');
@@ -206,6 +237,52 @@ export function renderDetails(root, { task }) {
         detail: { taskId: task.id }
       });
       root.dispatchEvent(editEvent);
+    });
+
+    // Checkbox toggle for completion
+    const checkbox = root.querySelector('#complete-checkbox');
+    if (checkbox) {
+      checkbox.addEventListener('change', () => {
+        const toggleEvent = new CustomEvent('taskToggleRequested', { detail: { taskId: task.id } });
+        root.dispatchEvent(toggleEvent);
+      });
+    }
+  }
+
+  // Delete button handler
+  const deleteBtn = root.querySelector('#delete-btn');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', async () => {
+      if (!task) return;
+      if (!confirm('Are you sure you want to delete this task?')) return;
+      try {
+        const response = await fetch(`/tasks/${task.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          }
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to delete task: ${response.status}`);
+        }
+        // Notify app to remove task
+        const deleteEvent = new CustomEvent('taskDeleteRequested', {
+          detail: { taskId: task.id }
+        });
+        root.dispatchEvent(deleteEvent);
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        alert('Failed to delete task. Please try again.');
+      }
+    });
+  }
+
+  // Close button handler (returns to empty state)
+  const closeBtn = root.querySelector('#close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      const unselectEvent = new CustomEvent('taskUnselected', {});
+      root.dispatchEvent(unselectEvent);
     });
   }
 }

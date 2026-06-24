@@ -485,3 +485,25 @@ detailsEl.addEventListener('taskDescriptionUpdated', (e) => {
   // Re-render to show updated task
   render();
 });
+
+// New event listeners for task selection and deletion
+detailsEl.addEventListener('taskUnselected', (e) => {
+  state.selectedTaskId = null;
+  render();
+});
+
+detailsEl.addEventListener('taskDeleteRequested', (e) => {
+  const taskId = e.detail.taskId;
+  // Remove task from state.tasks
+  state.tasks = state.tasks.filter(t => t.id !== taskId);
+  if (state.selectedTaskId === taskId) {
+    state.selectedTaskId = null;
+  }
+  render();
+});
+
+// New: toggle completion via checkbox in details header
+detailsEl.addEventListener('taskToggleRequested', (e) => {
+  const taskId = e.detail.taskId;
+  handleTaskToggle(taskId);
+});
