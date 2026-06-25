@@ -100,6 +100,18 @@ function selectedState(task) {
                contenteditable="false">
             ${task.description || 'No description yet.'}
           </div>
+          
+          ${task.tags.length ? `
+            <div class="mt-4 flex flex-wrap gap-2">
+              <span class="text-xs uppercase tracking-widest text-muted mb-1">Tags</span>
+              <div class="flex flex-wrap gap-1">
+                ${task.tags.map(t => `
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-sidebar
+                           text-ink border border-border">${t}</span>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
           <textarea class="description-edit textarea w-full min-h-[3rem] text-sm leading-relaxed text-ink border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ink/30 ${!task.isEditing ? 'hidden' : ''}"
                     placeholder="Add a description...">${task.description || ''}</textarea>
           <button class="description-btn mt-2 px-4 py-1 bg-ink text-white text-sm font-medium text-sm font-medium rounded hover:bg-ink/85 transition-colors duration-200 ${!task.isEditing ? 'hidden' : ''}"
@@ -112,19 +124,6 @@ function selectedState(task) {
           </button>
         </div>
       </section>
-
-      <!-- Tags -->
-      ${task.tags.length ? `
-        <section class="mb-8">
-          <h3 class="text-xs uppercase tracking-widest text-muted mb-2">Tags</h3>
-          <div class="flex flex-wrap gap-2">
-            ${task.tags.map(t => `
-              <span class="text-xs px-3 py-1 rounded-full bg-sidebar
-                           text-ink border border-border">${t}</span>
-            `).join('')}
-          </div>
-        </section>
-      ` : ''}
 
       <!-- Activity -->
       <section>

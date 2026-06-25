@@ -1,5 +1,5 @@
 // Application coordinator - manages state and connects components
-import { lists, tasks as initialTasks, todayISO } from './data.js';
+import { lists, todayISO } from './data.js';
 import { renderSidebar } from './sidebar.js';
 import { renderTaskList } from './tasks.js';
 import { renderDetails } from './details.js';
@@ -15,7 +15,7 @@ let state = {
     // List views will be dynamically added based on data.lists
   },
   activeView: 'inbox', // Currently active view
-  tasks: [], // Will be populated after auth check - either from API or mock data
+  tasks: [], // Will be populated after auth check - from API when logged in
   selectedTaskId: null, // Currently selected task for details panel
   user: null, // Logged-in user data
   editingTaskId: null, // ID of task currently being edited (for description)
@@ -228,7 +228,7 @@ async function handleSubmitNewTask(e) {
       dueDate: createdTask.due_date ? new Date(createdTask.due_date).toISOString().slice(0, 10) : null,
       tags: [], // TODO: implement tags
       priority: createdTask.priority,
-      listId: String(createdTask.list_id), // Convert to string to match mock data format
+      listId: String(createdTask.list_id), // Convert to string for consistency
       completed: createdTask.status === 'completed',
       notes: '',
       activity: [{
@@ -370,16 +370,16 @@ function init() {
             }]
           }));
         } else {
-          console.warn('Failed to fetch tasks, using mock data');
-          state.tasks = [...initialTasks];
+          console.warn('Failed to fetch tasks');
+          state.tasks = []; // No fallback to mock data
         }
       } catch (error) {
         console.error('Error fetching tasks:', error);
-        state.tasks = [...initialTasks];
+        state.tasks = []; // No fallback to mock data
       }
     } else {
-      // Not logged in, use mock data
-      state.tasks = [...initialTasks];
+      // Not logged in, no tasks to show
+      state.tasks = [];
     }
 
     // Initialize list views in state (needs to happen after tasks are set for proper filtering?)
