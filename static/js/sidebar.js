@@ -1,15 +1,6 @@
 // Sidebar renderer. Pure function: takes a root element + counts, returns
 // nothing. Side effects are confined to the supplied root.
 
-import { lists } from './data.js';
-
-// Maps list id → Tailwind class for the colored dot in the Lists section.
-const LIST_DOT_CLASS = {
-  work: 'bg-prioHigh',
-  personal: 'bg-prioMed',
-  reading: 'bg-prioLow',
-};
-
 // Maps priority string → the named CSS color used in the priority row of
 // the details panel. Centralised so it can be reused without drift.
 export const PRIORITY_COLOR = {
@@ -17,6 +8,9 @@ export const PRIORITY_COLOR = {
   medium: '#C17B21',
   low: '#2E7D32',
 };
+
+// Default list dot class for lists not in the predefined map
+const DEFAULT_LIST_DOT_CLASS = 'bg-prioMed';
 
 // Inline SVG icons. Inlined (not <img>) so they inherit currentColor.
 const ICON_INBOX = `
@@ -72,7 +66,38 @@ function navItem({ view, label, icon, count, active }) {
   `;
 }
 
-export function renderSidebar(root, { counts, activeView, onNavigate, user, onLogin, onLogout }) {
+// Renders a list item button for the Lists section
+function listItem({ list, count, active }) {
+  const activeClasses = active
+    ? 'bg-white text-ink shadow-sm'
+    : 'text-ink hover:bg-white/50';
+  // Use predefined color for known list types, fallback to medium for custom lists
+  const dotClass = {
+    work: 'bg-prioHigh',
+    personal: 'bg-prioMed',
+    reading: 'bg-prioLow'
+  }[list.id] || DEFAULT_LIST_DOT_CLASS;
+
+  return `
+    <li>
+      <button
+        type="button"
+        data-view="list-${list.id}"
+        class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg
+               hover:bg-white/50 transition-colors duration-200 ${activeClasses}"
+        aria-current="${active ? 'page' : 'false'}"
+      >
+        <span class="flex items-center gap-3">
+          <span class="priority-dot ${dotClass}"></span>
+          <span class="text-sm font-medium">${list.name}</span>
+        </span>
+        <span class="text-xs text-muted">(${count})</span>
+      </button>
+    </li>
+  `;
+}
+
+export function renderSidebar(root, { counts, activeView, onNavigate, user, onLogin, onLogout, lists = [] }) {
   root.innerHTML = `
     <!-- Logo + date -->
     <div>
@@ -91,24 +116,7 @@ export function renderSidebar(root, { counts, activeView, onNavigate, user, onLo
     <div>
       <h2 class="text-xs font-semibold tracking-widest text-muted mb-3">LISTS</h2>
       <ul class="flex flex-col gap-1">
-        ${lists.map(l => `
-          <li>
-            <button
-              type="button"
-              data-view="list-${l.id}"
-              class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg
-                     hover:bg-white/50 transition-colors duration-200
-                     ${activeView === `list-${l.id}` ? 'bg-white shadow-sm' : ''}"
-              aria-current="${activeView === `list-${l.id}` ? 'page' : 'false'}""
-            >
-              <span class="flex items-center gap-3">
-                <span class="priority-dot ${LIST_DOT_CLASS[l.id]}"></span>
-                <span class="text-sm font-medium">${l.name}</span>
-              </span>
-              <span class="text-xs text-muted">(${counts.lists[l.id] ?? 0})</span>
-            </button>
-          </li>
-        `).join('')}
+        ${lists.map(l => listItem({ list: l, count: counts.lists[l.id] ?? 0, active: activeView === `list-${l.id}` })).join('')}
       </ul>
     </div>
 

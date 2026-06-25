@@ -95,7 +95,8 @@ def delete_list(db: Session, list_id: int):
 
 # Task CRUD
 def get_task(db: Session, task_id: int):
-    return db.query(models.Task).filter(models.Task.id == task_id).first()
+    from sqlalchemy.orm import joinedload
+    return db.query(models.Task).options(joinedload(models.Task.tags)).filter(models.Task.id == task_id).first()
 
 
 def get_tasks_by_user(
@@ -107,7 +108,8 @@ def get_tasks_by_user(
     priority: Optional[schemas.PriorityEnum] = None,
     list_id: Optional[int] = None
 ):
-    query = db.query(models.Task).filter(models.Task.user_id == user_id)
+    from sqlalchemy.orm import joinedload
+    query = db.query(models.Task).options(joinedload(models.Task.tags)).filter(models.Task.user_id == user_id)
 
     if status:
         query = query.filter(models.Task.status == status)

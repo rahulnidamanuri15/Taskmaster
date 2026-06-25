@@ -1,5 +1,5 @@
 // Application coordinator - manages state and connects components
-import { lists, todayISO } from './data.js';
+import { todayISO } from './data.js';
 import { renderSidebar } from './sidebar.js';
 import { renderTaskList } from './tasks.js';
 import { renderDetails } from './details.js';
@@ -16,6 +16,7 @@ let state = {
   },
   activeView: 'inbox', // Currently active view
   tasks: [], // Will be populated after auth check - from API when logged in
+  lists: [], // Will be populated from API when logged in
   selectedTaskId: null, // Currently selected task for details panel
   user: null, // Logged-in user data
   editingTaskId: null, // ID of task currently being edited (for description)
@@ -28,14 +29,6 @@ const detailsEl = document.getElementById('task-details-panel');
 const newTaskDialog = document.getElementById('new-task-dialog');
 const cancelNewTaskBtn = document.getElementById('cancel-new-task');
 const newTaskForm = document.getElementById('new-task-form');
-
-// Initialize list views in state
-lists.forEach(list => {
-  state.views[`list-${list.id}`] = {
-    name: list.name,
-    icon: null // We could import icons if needed, but sidebar renders them internally
-  };
-});
 
 // Helper functions
 function getFilteredTasks() {
@@ -73,7 +66,7 @@ function getViewName() {
   // For list views, extract the list name
   if (state.activeView.startsWith('list-')) {
     const listId = state.activeView.substring(5);
-    const list = lists.find(l => l.id === listId);
+    const list = state.lists.find(l => l.id === listId);
     return list ? list.name : 'Unknown List';
   }
 
@@ -99,9 +92,66 @@ function handleNavigate(view) {
   render();
 }
 
-function handleTaskSelect(id) {
-  state.selectedTaskId = id;
-  render();
+async function handleTaskSelect(id) {
+  // If we already have the task in state and it has tags, use it
+  const existingTask = state.tasks.find(t => t.id === id);
+  if (existingTask && Array.isArray(existingTask.tags) && existingTask.tags.length > 0) {
+    state.selectedTaskId = id;
+    render();
+    return;
+  }
+
+  // Otherwise, fetch the full task details to ensure we have tags
+  if (!state.user) {
+    state.selectedTaskId = id;
+    render();
+    return;
+  }
+
+  try {
+    const response = await fetch(`/tasks/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch task: ${response.status}`);
+    }
+
+    const taskData = await response.json();
+
+    // Convert backend task to frontend task object
+    const frontendTask = {
+      id: taskData.id,
+      title: taskData.title,
+      description: taskData.description || '',
+      dueDate: taskData.due_date ? new Date(taskData.due_date).toISOString().slice(0, 10) : null,
+      tags: taskData.tags || [], // Extract tags from API response
+      priority: taskData.priority,
+      listId: String(taskData.list_id),
+      completed: taskData.status === 'completed',
+      notes: '',
+      activity: [{
+        at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+        text: 'Task loaded from database'
+      }]
+    };
+
+    // Update the task in state.tasks
+    const taskIndex = state.tasks.findIndex(t => t.id === id);
+    if (taskIndex !== -1) {
+      state.tasks[taskIndex] = frontendTask;
+    }
+
+    state.selectedTaskId = id;
+    render();
+  } catch (error) {
+    console.error('Error fetching task details:', error);
+    // Fallback to existing task data if fetch fails
+    state.selectedTaskId = id;
+    render();
+  }
 }
 
 function handleTaskToggle(id) {
@@ -165,8 +215,7 @@ async function handleSubmitNewTask(e) {
     if (!listsResponse.ok) {
       throw new Error('Failed to fetch user lists');
     }
-
-    let lists = await listsResponse.json();
+    const lists = await listsResponse.json();
 
     // If user has no lists, create a default "Inbox" list
     let listId;
@@ -196,12 +245,17 @@ async function handleSubmitNewTask(e) {
     }
 
     // Prepare task data for API
+    let dueDateForAPI = null;
+    if (dueDate) {
+      const [year, month, day] = dueDate.split('-');
+      dueDateForAPI = new Date(Date.UTC(Number(year), Number(month)-1, Number(day))).toISOString();
+    }
     const taskData = {
       title: title,
       description: description,
       priority: priority, // already lowercase, matches enum
       status: 'pending', // default status
-      due_date: dueDate ? new Date(dueDate).toISOString() : null, // Convert to ISO string
+      due_date: dueDateForAPI, // Convert to ISO string in UTC to avoid timezone issues
       list_id: listId
     };
 
@@ -218,7 +272,70 @@ async function handleSubmitNewTask(e) {
       throw new Error(`Failed to create task: ${response.status}`);
     }
 
-    const createdTask = await response.json();
+    let createdTask = await response.json();
+
+    // Handle tags if any were provided
+    if (tags && tags.length > 0) {
+      // For each tag, either find existing or create new, then attach to task
+      for (const tagName of tags) {
+        try {
+          // First, try to find if this tag already exists for the user
+          const tagsResponse = await fetch(`/users/${state.user.id}/tags/`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            }
+          });
+
+          if (tagsResponse.ok) {
+            const existingTags = await tagsResponse.json();
+            let tag = existingTags.find(t => t.name.toLowerCase() === tagName.toLowerCase());
+
+            if (!tag) {
+              // Tag doesn't exist, create it
+              const createTagResponse = await fetch(`/users/${state.user.id}/tags/`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                },
+                body: JSON.stringify({ name: tagName })
+              });
+
+              if (createTagResponse.ok) {
+                tag = await createTagResponse.json();
+              } else {
+                console.warn(`Failed to create tag: ${tagName}`);
+                continue;
+              }
+            }
+
+            // Now attach the tag to the task
+            await fetch(`/tasks/${createdTask.id}/tags/${tag.id}`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+              }
+            });
+          }
+        } catch (tagError) {
+          console.warn(`Error processing tag ${tagName}:`, tagError);
+          // Continue with other tags even if one fails
+        }
+      }
+
+      // After adding all tags, fetch the updated task to get the tags
+      const updatedTaskResponse = await fetch(`/tasks/${createdTask.id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
+
+      if (updatedTaskResponse.ok) {
+        const updatedTask = await updatedTaskResponse.json();
+        // Use the updated task which now includes the tags
+        createdTask = updatedTask;
+      }
+    }
 
     // Convert backend task to frontend task object
     const frontendTask = {
@@ -226,7 +343,7 @@ async function handleSubmitNewTask(e) {
       title: createdTask.title,
       description: createdTask.description || '',
       dueDate: createdTask.due_date ? new Date(createdTask.due_date).toISOString().slice(0, 10) : null,
-      tags: [], // TODO: implement tags
+      tags: createdTask.tags || [], // Extract tags from API response
       priority: createdTask.priority,
       listId: String(createdTask.list_id), // Convert to string for consistency
       completed: createdTask.status === 'completed',
@@ -343,23 +460,37 @@ function init() {
 
   // Check auth status and set user state
   checkAuthStatus().then(async () => {
-    // Fetch user tasks if logged in
+    // Fetch user data if logged in
     if (state.user) {
       try {
-        const response = await fetch(`/users/${state.user.id}/tasks/`, {
+        // Fetch user's lists
+        const listsResponse = await fetch(`/users/${state.user.id}/lists/`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('access_token')}`
           }
         });
-        if (response.ok) {
-          const fetchedTasks = await response.json();
+        if (listsResponse.ok) {
+          state.lists = await listsResponse.json();
+        } else {
+          console.warn('Failed to fetch lists');
+          state.lists = [];
+        }
+
+        // Fetch user tasks
+        const tasksResponse = await fetch(`/users/${state.user.id}/tasks/`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          }
+        });
+        if (tasksResponse.ok) {
+          const fetchedTasks = await tasksResponse.json();
           // Convert backend tasks to frontend format
           state.tasks = fetchedTasks.map(task => ({
             id: task.id,
             title: task.title,
             description: task.description || '',
             dueDate: task.due_date ? new Date(task.due_date).toISOString().slice(0, 10) : null,
-            tags: [], // TODO: implement tags
+            tags: task.tags || [], // Extract tags from API response
             priority: task.priority,
             listId: String(task.list_id),
             completed: task.status === 'completed',
@@ -374,17 +505,18 @@ function init() {
           state.tasks = []; // No fallback to mock data
         }
       } catch (error) {
-        console.error('Error fetching tasks:', error);
+        console.error('Error fetching data:', error);
         state.tasks = []; // No fallback to mock data
+        state.lists = [];
       }
     } else {
-      // Not logged in, no tasks to show
+      // Not logged in, no data to show
       state.tasks = [];
+      state.lists = [];
     }
 
-    // Initialize list views in state (needs to happen after tasks are set for proper filtering?)
-    // Actually, list views depend on the lists data, not tasks data
-    lists.forEach(list => {
+    // Initialize list views in state (needs to happen after lists are set)
+    state.lists.forEach(list => {
       state.views[`list-${list.id}`] = {
         name: list.name,
         icon: null // We could import icons if needed, but sidebar renders them internally
@@ -406,7 +538,7 @@ function render() {
     today: state.tasks.filter(task => task.dueDate === todayISO()).length,
     important: state.tasks.filter(task => task.priority === 'high').length,
     lists: Object.fromEntries(
-      lists.map(list => [
+      state.lists.map(list => [
         list.id,
         state.tasks.filter(task => task.listId === list.id).length
       ])
@@ -420,7 +552,8 @@ function render() {
     onNavigate: handleNavigate,
     user: state.user,
     onLogin: handleLogin,
-    onLogout: handleLogout
+    onLogout: handleLogout,
+    lists: state.lists
   });
 
   // Render task list panel

@@ -60,10 +60,7 @@ function cardHtml(task, isSelected) {
             ${task.dueDate
               ? `<span class="text-xs text-muted">${formatDueDate(task.dueDate)}</span>`
               : ''}
-            ${task.tags.map(t => `
-              <span class="text-[11px] px-2 py-0.5 rounded-full bg-sidebar
-                           text-ink border border-border">${t}</span>
-            `).join('')}
+            
           </div>
         </div>
       </div>

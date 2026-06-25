@@ -93,25 +93,13 @@ function selectedState(task) {
       </div>
 
       <!-- Description -->
-      <section class="mb-8 mt-7 border-b" >
+      <section class="mb-7 mt-7 border-b" >
         <h3 class="text-xs uppercase tracking-widest text-muted mb-2">Description</h3>
         <div class="description-container relative">
-          <div class="description-text text-sm leading-relaxed text-ink min-h-[3rem] ${task.isEditing ? 'hidden' : ''}"
+          <div class="description-text text-sm leading-relaxed text-ink min-h-[8rem] ${task.isEditing ? 'hidden' : ''}"
                contenteditable="false">
             ${task.description || 'No description yet.'}
           </div>
-          
-          ${task.tags.length ? `
-            <div class="mt-4 flex flex-wrap gap-2">
-              <span class="text-xs uppercase tracking-widest text-muted mb-1">Tags</span>
-              <div class="flex flex-wrap gap-1">
-                ${task.tags.map(t => `
-                  <span class="text-xs px-2 py-0.5 rounded-full bg-sidebar
-                           text-ink border border-border">${t}</span>
-                `).join('')}
-              </div>
-            </div>
-          ` : ''}
           <textarea class="description-edit textarea w-full min-h-[3rem] text-sm leading-relaxed text-ink border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ink/30 ${!task.isEditing ? 'hidden' : ''}"
                     placeholder="Add a description...">${task.description || ''}</textarea>
           <button class="description-btn mt-2 px-4 py-1 bg-ink text-white text-sm font-medium text-sm font-medium rounded hover:bg-ink/85 transition-colors duration-200 ${!task.isEditing ? 'hidden' : ''}"
@@ -124,6 +112,23 @@ function selectedState(task) {
           </button>
         </div>
       </section>
+      <!-- Tags Section -->
+            <div class="mt-5 pb-4 mb-6  border-b ">
+              <h4 class="text-xs uppercase tracking-widest text-muted mb-3">Tags</h4>
+              <div class="tag-container">
+                ${task.tags && task.tags.length > 0 ? `
+                  <div class="flex flex-wrap gap-2">
+                    ${task.tags.map(tag => `
+                      <span class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full bg-sidebar/50 text-ink/80 border border-border/50">
+                        ${tag.name}
+                      </span>
+                    `).join('')}
+                  </div>
+                ` : `
+                  <p class="text-sm text-muted italic">None</p>
+                `}
+              </div>
+            </div>
 
       <!-- Activity -->
       <section>

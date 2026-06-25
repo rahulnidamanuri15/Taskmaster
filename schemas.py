@@ -2,7 +2,7 @@
 Pydantic schemas for TaskMaster entities.
 """
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from typing import Optional, List as ListType
 from datetime import datetime
 import models
 
@@ -32,7 +32,7 @@ class UserInDBBase(UserBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserInDB(UserInDBBase):
@@ -67,7 +67,7 @@ class ListInDBBase(ListBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ListInDB(ListInDBBase):
@@ -110,7 +110,7 @@ class TaskInDBBase(TaskBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class TaskInDB(TaskInDBBase):
@@ -118,7 +118,17 @@ class TaskInDB(TaskInDBBase):
 
 
 class Task(TaskInDBBase):
-    pass
+    tags: ListType["Tag"] = []
+
+    class Config:
+        from_attributes = True
+
+
+class TaskDetail(TaskInDBBase):
+    tags: ListType["Tag"] = []
+
+    class Config:
+        from_attributes = True
 
 
 # Tag schemas
@@ -140,7 +150,7 @@ class TagInDBBase(TagBase):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class TagInDB(TagInDBBase):

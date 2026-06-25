@@ -174,7 +174,7 @@ def read_tasks_for_user(
     return tasks
 
 
-@app.get("/tasks/{task_id}", response_model=schemas.Task)
+@app.get("/tasks/{task_id}", response_model=schemas.TaskDetail)
 def read_task(task_id: int, db: Session = Depends(get_db)):
     db_task = crud.get_task(db, task_id=task_id)
     if db_task is None:
@@ -244,6 +244,55 @@ def read_tag(tag_id: int, db: Session = Depends(get_db)):
     db_tag = crud.get_tag(db, tag_id=tag_id)
     if db_tag is None:
         raise HTTPException(status_code=404, detail="Tag not found")
+    return db_tag
+
+
+# Task-tag endpoints
+@app.post("/tasks/{task_id}/tags/{tag_id}", response_model=schemas.Tag)
+def add_tag_to_task(
+    task_id: int, tag_id: int, db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(auth.get_current_user)
+):
+    # Verify task exists and belongs to current user
+    db_task = crud.get_task(db, task_id=task_id)
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if db_task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this task")
+
+    # Verify tag exists and belongs to current user
+    db_tag = crud.get_tag(db, tag_id=tag_id)
+    if db_tag is None:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    if db_tag.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to use this tag")
+
+    # Add tag to task
+    crud.add_tag_to_task(db=db, task_id=task_id, tag_id=tag_id)
+    return db_tag
+
+
+@app.delete("/tasks/{task_id}/tags/{tag_id}", response_model=schemas.Tag)
+def remove_tag_from_task(
+    task_id: int, tag_id: int, db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(auth.get_current_user)
+):
+    # Verify task exists and belongs to current user
+    db_task = crud.get_task(db, task_id=task_id)
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if db_task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this task")
+
+    # Verify tag exists and belongs to current user
+    db_tag = crud.get_tag(db, tag_id=tag_id)
+    if db_tag is None:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    if db_tag.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to use this tag")
+
+    # Remove tag from task
+    crud.remove_tag_from_task(db=db, task_id=task_id, tag_id=tag_id)
     return db_tag
 
 
