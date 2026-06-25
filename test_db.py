@@ -28,7 +28,8 @@ try:
     user_data = schemas.UserCreate(
         full_name="Test User",
         email="test@example.com",
-        password="password123"
+        password="password123",
+        confirm_password="password123"
     )
 
     # Check if user already exists

@@ -70,12 +70,13 @@ function selectedState(task) {
     </header>
     <article class="max-w-2xl mx-auto">
       <!-- Title -->
-      <header class="mb-6">
+      <div class=" border-b"> 
+      <header class="mb-6 mt-5">
         <h2 class="font-display text-4xl font-semibold leading-tight">${task.title}</h2>
       </header>
 
       <!-- Meta grid: priority, due date -->
-      <dl class="grid grid-cols-2 gap-x-6 gap-y-4 mb-8">
+      <dl class="grid grid-cols-2 gap-x-6 gap-y-4 mb-8 ">
         <div>
           <dt class="text-xs uppercase tracking-widest text-muted mb-1">Priority</dt>
           <dd class="flex items-center gap-2 text-sm">
@@ -89,9 +90,10 @@ function selectedState(task) {
           <dd class="text-sm">${formatDueDate(task.dueDate)}</dd>
         </div>
       </dl>
+      </div>
 
       <!-- Description -->
-      <section class="mb-8">
+      <section class="mb-8 mt-7 border-b" >
         <h3 class="text-xs uppercase tracking-widest text-muted mb-2">Description</h3>
         <div class="description-container relative">
           <div class="description-text text-sm leading-relaxed text-ink min-h-[3rem] ${task.isEditing ? 'hidden' : ''}"

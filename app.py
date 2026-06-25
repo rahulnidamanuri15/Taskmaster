@@ -199,6 +199,22 @@ def update_task(
     return crud.update_task(db=db, task_id=task_id, task=task)
 
 
+@app.delete("/tasks/{task_id}", response_model=schemas.Task)
+def delete_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(auth.get_current_user)
+):
+    # Verify task exists and belongs to current user
+    db_task = crud.get_task(db, task_id=task_id)
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if db_task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this task")
+
+    return crud.delete_task(db=db, task_id=task_id)
+
+
 # Tag endpoints
 @app.post("/users/{user_id}/tags/", response_model=schemas.Tag)
 def create_tag_for_user(
