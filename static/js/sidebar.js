@@ -13,21 +13,21 @@ export const PRIORITY_COLOR = {
 const DEFAULT_LIST_DOT_CLASS = 'bg-prioMed';
 
 // Inline SVG icons. Inlined (not <img>) so they inherit currentColor.
-const ICON_INBOX = `
+export const ICON_INBOX = `
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
        stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
        stroke-linejoin="round" aria-hidden="true" class="w-5 h-5">
     <path d="M22 12h-6l-2 3h-4l-2-3H2"/>
     <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/>
   </svg>`;
-const ICON_TODAY = `
+export const ICON_TODAY = `
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
        stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
        stroke-linejoin="round" aria-hidden="true" class="w-5 h-5">
     <circle cx="12" cy="12" r="10"/>
     <polyline points="12 6 12 12 16 14"/>
   </svg>`;
-const ICON_STAR = `
+export const ICON_STAR = `
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
        stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
        stroke-linejoin="round" aria-hidden="true" class="w-5 h-5">
@@ -112,12 +112,55 @@ export function renderSidebar(root, { counts, activeView, onNavigate, user, onLo
       ${navItem({ view: 'important', label: 'Important', icon: ICON_STAR,  count: counts.important, active: activeView === 'important' })}
     </nav>
 
-    <!-- Custom lists -->
+    <!-- Priority-based filter sections -->
     <div>
       <h2 class="text-xs font-semibold tracking-widest text-muted mb-3">LISTS</h2>
-      <ul class="flex flex-col gap-1">
-        ${lists.map(l => listItem({ list: l, count: counts.lists[l.id] ?? 0, active: activeView === `list-${l.id}` })).join('')}
-      </ul>
+      <div class="space-y-1">
+        <!-- Work (High Priority) -->
+        <button
+          type="button"
+          data-view="work"
+          class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg
+                 ${activeView === 'work' ? 'bg-white text-ink shadow-sm' : 'text-ink hover:bg-white/50'}"
+          aria-current="${activeView === 'work' ? 'page' : 'false'}"
+        >
+          <span class="flex items-center gap-3">
+            <span class="priority-dot bg-prioHigh"></span>
+            <span class="text-sm font-medium">Work</span>
+          </span>
+          <span class="text-xs text-muted">(${counts.priority?.high ?? 0})</span>
+        </button>
+
+        <!-- Personal (Medium Priority) -->
+        <button
+          type="button"
+          data-view="personal"
+          class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg
+                 ${activeView === 'personal' ? 'bg-white text-ink shadow-sm' : 'text-ink hover:bg-white/50'}"
+          aria-current="${activeView === 'personal' ? 'page' : 'false'}"
+        >
+          <span class="flex items-center gap-3">
+            <span class="priority-dot bg-prioMed"></span>
+            <span class="text-sm font-medium">Personal</span>
+          </span>
+          <span class="text-xs text-muted">(${counts.priority?.medium ?? 0})</span>
+        </button>
+
+        <!-- Reading List (Low Priority) -->
+        <button
+          type="button"
+          data-view="reading"
+          class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg
+                 ${activeView === 'reading' ? 'bg-white text-ink shadow-sm' : 'text-ink hover:bg-white/50'}"
+          aria-current="${activeView === 'reading' ? 'page' : 'false'}"
+        >
+          <span class="flex items-center gap-3">
+            <span class="priority-dot bg-prioLow"></span>
+            <span class="text-sm font-medium">Reading List</span>
+          </span>
+          <span class="text-xs text-muted">(${counts.priority?.low ?? 0})</span>
+        </button>
+      </div>
     </div>
 
     <!-- User profile or login -->

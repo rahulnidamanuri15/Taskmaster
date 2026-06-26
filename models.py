@@ -73,6 +73,7 @@ class Task(Base):
     priority = Column(Enum(PriorityEnum), nullable=False)
     status = Column(Enum(StatusEnum), nullable=False, default=StatusEnum.PENDING)
     due_date = Column(Date, nullable=True)
+    is_important = Column(Integer, default=0, nullable=False)  # Boolean as integer for SQLite
     completed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -92,6 +93,7 @@ class Task(Base):
         Index("idx_tasks_list_id", "list_id"),
         Index("idx_tasks_status", "status"),
         Index("idx_tasks_due_date", "due_date"),
+        Index("idx_tasks_is_important", "is_important"),
     )
 
 

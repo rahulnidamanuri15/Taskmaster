@@ -1,7 +1,7 @@
 // Task list panel renderer. Renders the panel header, the active (open)
 // tasks, and a collapsible Completed accordion at the bottom.
 
-import { PRIORITY_COLOR } from './sidebar.js';
+import { PRIORITY_COLOR, ICON_STAR } from './sidebar.js';
 
 const PRIORITY_CLASS = {
   high:   'bg-prioHigh',
@@ -35,6 +35,14 @@ function priorityDot(priority) {
                  title="${priority} priority" aria-label="${priority} priority"></span>`;
 }
 
+const STAR_OUTLINE = ICON_STAR;
+const STAR_FILLED = `
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+       stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+       stroke-linejoin="round" aria-hidden="true" class="w-5 h-5">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+  </svg>`;
+
 // Single card. Roles: "button" so SR users hear it as interactive; we
 // handle Enter/Space in the keyboard listener below.
 function cardHtml(task, isSelected) {
@@ -60,19 +68,33 @@ function cardHtml(task, isSelected) {
           ${checkedAttrs}
           aria-label="Mark ${task.title} as ${task.completed ? 'incomplete' : 'complete'}"
         />
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            ${priorityDot(task.priority)}
-            <h3 class="text-sm font-semibold leading-tight truncate
-                       ${task.completed ? 'line-through text-muted' : 'text-ink'}">
-              ${task.title}
-            </h3>
+        <div class="flex-1 min-w-0 flex flex-col">
+          <div class="flex items-start justify-between flex-1">
+            <div class="flex items-center gap-2">
+              ${priorityDot(task.priority)}
+              <h3 class="text-sm font-semibold leading-tight truncate
+                         ${task.completed ? 'line-through text-muted' : 'text-ink'}">
+                ${task.title}
+              </h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                data-task-id="${task.id}"
+                data-action="toggle-important"
+                class="important-btn p-1 rounded hover:bg-sidebar transition-colors
+                       ${task.is_important ? 'text-yellow-400' : 'text-muted hover:text-ink'}"
+                aria-label="${task.is_important ? 'Remove from important' : 'Mark as important'}"
+              >
+                ${task.is_important ? STAR_FILLED : STAR_OUTLINE}
+              </button>
+            </div>
           </div>
           <div class="mt-2 flex flex-wrap items-center gap-2">
             ${task.dueDate
               ? `<span class="text-xs text-muted">${formatDueDate(task.dueDate)}</span>`
               : ''}
-            
+
           </div>
         </div>
       </div>
@@ -88,6 +110,7 @@ export function renderTaskList(root, {
   selectedTaskId,
   onSelect,
   onToggleComplete,
+  onToggleImportant,
   onNewTask,
 }) {
   root.innerHTML = `
@@ -159,5 +182,13 @@ export function renderTaskList(root, {
 
     const checkbox = card.querySelector('.task-checkbox');
     checkbox.addEventListener('change', () => onToggleComplete(id));
+
+    const importantBtn = card.querySelector('[data-action="toggle-important"]');
+    if (importantBtn) {
+      importantBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent triggering the task selection
+        onToggleImportant(id);
+      });
+    }
   });
 }

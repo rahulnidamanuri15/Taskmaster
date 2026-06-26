@@ -85,6 +85,7 @@ class TaskBase(BaseModel):
     priority: models.PriorityEnum = models.PriorityEnum.MEDIUM
     status: models.StatusEnum = models.StatusEnum.PENDING
     due_date: Optional[date] = None
+    is_important: bool = False
 
 
 class TaskCreate(TaskBase):
@@ -99,6 +100,7 @@ class TaskUpdate(BaseModel):
     due_date: Optional[date] = None
     completed_at: Optional[datetime] = None
     list_id: Optional[int] = None
+    is_important: Optional[bool] = None
 
 
 class TaskInDBBase(TaskBase):
@@ -108,6 +110,7 @@ class TaskInDBBase(TaskBase):
     completed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+    is_important: bool
 
     class Config:
         from_attributes = True

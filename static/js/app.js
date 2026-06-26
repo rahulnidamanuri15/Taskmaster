@@ -12,6 +12,9 @@ let state = {
     inbox: { name: 'Inbox', icon: null }, // Icon will be imported if needed
     today: { name: 'Today', icon: null },
     important: { name: 'Important', icon: null },
+    work: { name: 'Work', icon: null },
+    personal: { name: 'Personal', icon: null },
+    reading: { name: 'Reading List', icon: null },
     // List views will be dynamically added based on data.lists
   },
   activeView: 'inbox', // Currently active view
@@ -44,7 +47,20 @@ function getFilteredTasks() {
   }
 
   if (activeView === 'important') {
+    return tasks.filter(task => task.is_important);
+  }
+
+  // Handle priority-based filter views
+  if (activeView === 'work') {
     return tasks.filter(task => task.priority === 'high');
+  }
+
+  if (activeView === 'personal') {
+    return tasks.filter(task => task.priority === 'medium');
+  }
+
+  if (activeView === 'reading') {
+    return tasks.filter(task => task.priority === 'low');
   }
 
   // Handle list views (e.g., 'list-work', 'list-personal', etc.)
@@ -70,7 +86,17 @@ function getViewName() {
     return list ? list.name : 'Unknown List';
   }
 
-  return state.activeView; // Fallback
+  // Handle priority-based filter views
+  switch (state.activeView) {
+    case 'work':
+      return 'Work';
+    case 'personal':
+      return 'Personal';
+    case 'reading':
+      return 'Reading List';
+    default:
+      return state.activeView; // Fallback
+  }
 }
 
 function getRemainingCount() {
@@ -131,6 +157,7 @@ async function handleTaskSelect(id) {
       priority: taskData.priority,
       listId: String(taskData.list_id),
       completed: taskData.status === 'completed',
+      is_important: taskData.is_important,
       notes: '',
       activity: [{
         at: new Date().toISOString().slice(0, 16).replace('T', ' '),
@@ -166,6 +193,55 @@ function handleTaskToggle(id) {
     });
   }
   render();
+}
+
+function handleToggleImportant(id) {
+  const task = state.tasks.find(t => t.id === id);
+  if (!task) return;
+
+  const newImportant = !task.is_important;
+
+  // Optimistically update the UI
+  task.is_important = newImportant;
+  // Update activity log
+  const actionText = newImportant ? 'You marked this task as important' : 'You removed this task from important';
+  task.activity.push({
+    at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    text: actionText
+  });
+
+  render();
+
+  // Send update to server
+  if (state.user) {
+    fetch(`/tasks/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      },
+      body: JSON.stringify({ is_important: newImportant })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to update task importance');
+      }
+      // Optionally, we could update the task with the server's response, but we are optimistic
+    })
+    .catch(error => {
+      console.error('Error updating task importance:', error);
+      // Revert the optimistic update
+      task.is_important = !newImportant;
+      // Remove the last activity we added (the optimistic one)
+      task.activity.pop();
+      // Optionally add an error activity
+      task.activity.push({
+        at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+        text: 'Failed to update importance. Please try again.'
+      });
+      render();
+    });
+  }
 }
 
 function handleNewTask() {
@@ -345,11 +421,12 @@ async function handleSubmitNewTask(e) {
       id: createdTask.id,
       title: createdTask.title,
       description: createdTask.description || '',
-      dueDate: taskData.due_date ? taskData.due_date.slice(0, 10): null,
+      dueDate: createdTask.due_date ? new Date(createdTask.due_date).toISOString().slice(0, 10) : null,
       tags: createdTask.tags || [], // Extract tags from API response
       priority: createdTask.priority,
       listId: String(createdTask.list_id), // Convert to string for consistency
       completed: createdTask.status === 'completed',
+      is_important: createdTask.is_important,
       notes: '',
       activity: [{
         at: new Date().toISOString().slice(0, 16).replace('T', ' '),
@@ -497,6 +574,7 @@ function init() {
             priority: task.priority,
             listId: String(task.list_id),
             completed: task.status === 'completed',
+            is_important: task.is_important,
             notes: '',
             activity: [{
               at: new Date().toISOString().slice(0, 16).replace('T', ' '),
@@ -539,13 +617,18 @@ function render() {
   const counts = {
     inbox: state.tasks.length,
     today: state.tasks.filter(task => task.dueDate === todayISO()).length,
-    important: state.tasks.filter(task => task.priority === 'high').length,
+    important: state.tasks.filter(task => task.is_important).length,
     lists: Object.fromEntries(
       state.lists.map(list => [
         list.id,
         state.tasks.filter(task => task.listId === list.id).length
       ])
-    )
+    ),
+    priority: {
+      high: state.tasks.filter(task => task.priority === 'high').length,
+      medium: state.tasks.filter(task => task.priority === 'medium').length,
+      low: state.tasks.filter(task => task.priority === 'low').length
+    }
   };
 
   // Render sidebar
@@ -568,6 +651,7 @@ function render() {
     selectedTaskId: state.selectedTaskId,
     onSelect: handleTaskSelect,
     onToggleComplete: handleTaskToggle,
+    onToggleImportant: handleToggleImportant,
     onNewTask: handleNewTask
   });
 
