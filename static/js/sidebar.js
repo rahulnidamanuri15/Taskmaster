@@ -176,8 +176,17 @@ export function renderSidebar(root, { counts, activeView, onNavigate, user, onLo
             <p class="text-sm text-muted">${user.email || ''}</p>
           </div>
         </div>
-        <button id="logout-button" class="mt-4 w-full text-left text-sm text-muted hover:text-ink transition-colors">
-          Logout
+        <button id="logout-button" class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/50 transition-colors duration-200 text-left">
+          <span class="flex items-center gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true" class="w-5 h-5">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span class="text-sm font-medium">Logout</span>
+          </span>
         </button>
       ` : `
         <button id="login-button" class="w-full bg-ink text-white px-4 py-2 rounded-lg font-medium hover:bg-ink/85 transition-colors">
