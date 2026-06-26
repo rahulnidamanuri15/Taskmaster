@@ -5,6 +5,30 @@ import { renderTaskList } from './tasks.js';
 import { renderDetails } from './details.js';
 import { PRIORITY_COLOR } from './sidebar.js';
 
+// Activity persistence helpers
+const ACTIVITY_STORAGE_PREFIX = 'taskmaster-activity-';
+function getStoredActivity(taskId) {
+  try {
+    const json = localStorage.getItem(ACTIVITY_STORAGE_PREFIX + taskId);
+    return json ? JSON.parse(json) : null;
+  } catch (e) {
+    console.warn('Failed to read activity from storage', e);
+    return null;
+  }
+}
+function setStoredActivity(taskId, activityArray) {
+  try {
+    localStorage.setItem(ACTIVITY_STORAGE_PREFIX + taskId, JSON.stringify(activityArray));
+  } catch (e) {
+    console.warn('Failed to store activity', e);
+  }
+}
+function removeStoredActivity(taskId) {
+  try {
+    localStorage.removeItem(ACTIVITY_STORAGE_PREFIX + taskId);
+  } catch (e) {}
+}
+
 // Application state
 let state = {
   // Views configuration
@@ -147,6 +171,28 @@ async function handleTaskSelect(id) {
 
     const taskData = await response.json();
 
+    // Preserve existing activity if we already have this task in state
+    const existingTask = state.tasks.find(t => t.id === id);
+    const existingActivity = existingTask ? existingTask.activity : [];
+
+    // Use activity from backend if provided (try common field names), otherwise keep existing activity, else default, else stored
+    let activityFromBackend = [];
+    if (taskData.activity && Array.isArray(taskData.activity)) {
+      activityFromBackend = taskData.activity;
+    } else if (taskData.activity_log && Array.isArray(taskData.activity_log)) {
+      activityFromBackend = taskData.activity_log;
+    } else if (taskData.activities && Array.isArray(taskData.activities)) {
+      activityFromBackend = taskData.activities;
+    }
+    const storedActivity = getStoredActivity(id);
+    const activityToUse = activityFromBackend.length > 0 ? activityFromBackend
+      : (storedActivity && storedActivity.length > 0 ? storedActivity
+        : (existingActivity.length > 0 ? existingActivity
+          : [{
+            at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+            text: 'Task loaded from database'
+          }]));
+
     // Convert backend task to frontend task object
     const frontendTask = {
       id: taskData.id,
@@ -159,10 +205,7 @@ async function handleTaskSelect(id) {
       completed: taskData.status === 'completed',
       is_important: taskData.is_important,
       notes: '',
-      activity: [{
-        at: new Date().toISOString().slice(0, 16).replace('T', ' '),
-        text: 'Task loaded from database'
-      }]
+      activity: activityToUse
     };
 
     // Update the task in state.tasks
@@ -191,6 +234,8 @@ function handleTaskToggle(id) {
       at: new Date().toISOString().slice(0, 16).replace('T', ' '), // Format: YYYY-MM-DD HH:MM
       text: actionText
     });
+    // Persist activity
+    setStoredActivity(id, task.activity);
   }
   render();
 }
@@ -226,6 +271,8 @@ function handleToggleImportant(id) {
       if (!response.ok) {
         throw new Error('Failed to update task importance');
       }
+      // Persist activity on success
+      setStoredActivity(id, task.activity);
       // Optionally, we could update the task with the server's response, but we are optimistic
     })
     .catch(error => {
@@ -239,6 +286,8 @@ function handleToggleImportant(id) {
         at: new Date().toISOString().slice(0, 16).replace('T', ' '),
         text: 'Failed to update importance. Please try again.'
       });
+      // Persist after rollback
+      setStoredActivity(id, task.activity);
       render();
     });
   }
@@ -436,6 +485,8 @@ async function handleSubmitNewTask(e) {
 
     // Add the converted task to state.tasks
     state.tasks.push(frontendTask);
+    // Persist initial activity
+    setStoredActivity(frontendTask.id, frontendTask.activity);
 
     // Close dialog and reset form
     newTaskDialog.close();
@@ -565,22 +616,29 @@ function init() {
         if (tasksResponse.ok) {
           const fetchedTasks = await tasksResponse.json();
           // Convert backend tasks to frontend format
-          state.tasks = fetchedTasks.map(task => ({
-            id: task.id,
-            title: task.title,
-            description: task.description || '',
-            dueDate: task.due_date ? new Date(task.due_date).toISOString().slice(0, 10) : null,
-            tags: task.tags || [], // Extract tags from API response
-            priority: task.priority,
-            listId: String(task.list_id),
-            completed: task.status === 'completed',
-            is_important: task.is_important,
-            notes: '',
-            activity: [{
-              at: new Date().toISOString().slice(0, 16).replace('T', ' '),
-              text: 'Task loaded from database'
-            }]
-          }));
+          state.tasks = fetchedTasks.map(task => {
+            const stored = getStoredActivity(task.id);
+            const backendActivity = task.activity || task.activity_log || task.activities || [];
+            const activityToUse = stored && stored.length > 0 ? stored
+              : (Array.isArray(backendActivity) && backendActivity.length > 0 ? backendActivity
+                : [{
+                  at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+                  text: 'Task loaded from database'
+                }]);
+            return {
+              id: task.id,
+              title: task.title,
+              description: task.description || '',
+              dueDate: task.due_date ? new Date(task.due_date).toISOString().slice(0, 10) : null,
+              tags: task.tags || [], // Extract tags from API response
+              priority: task.priority,
+              listId: String(task.list_id),
+              completed: task.status === 'completed',
+              is_important: task.is_important,
+              notes: '',
+              activity: activityToUse
+            };
+          });
         } else {
           console.warn('Failed to fetch tasks');
           state.tasks = []; // No fallback to mock data
@@ -719,6 +777,8 @@ detailsEl.addEventListener('taskDeleteRequested', (e) => {
   if (state.selectedTaskId === taskId) {
     state.selectedTaskId = null;
   }
+  // Remove stored activity
+  removeStoredActivity(taskId);
   render();
 });
 
