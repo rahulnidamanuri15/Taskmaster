@@ -10,11 +10,23 @@ const PRIORITY_CLASS = {
 };
 
 // Formats "2026-06-24" → "24 Jun". Uses Intl so it respects locale.
+// Shows "Today" for today's date (in local time).
 function formatDueDate(iso) {
   if (!iso) return '';
-  // Parse the YYYY-MM-DD string as a local date so we don't get timezone drift.
   const [y, m, d] = iso.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
+  const date = new Date(y, m - 1, d); // local time at midnight for the given date
+
+  const today = new Date();
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  if (
+    date.getFullYear() === todayMidnight.getFullYear() &&
+    date.getMonth() === todayMidnight.getMonth() &&
+    date.getDate() === todayMidnight.getDate()
+  ) {
+    return 'Today';
+  }
+
   return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 }
 

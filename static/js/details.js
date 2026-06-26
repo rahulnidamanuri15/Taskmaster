@@ -25,11 +25,27 @@ const ICON_CLOSE = `
 function formatDueDate(iso) {
   if (!iso) return 'No due date';
   const [y, m, d] = iso.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
+  const date = new Date(y, m - 1, d); // local time at midnight for the given date
+
+  const today = new Date();
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  if (
+    date.getFullYear() === todayMidnight.getFullYear() &&
+    date.getMonth() === todayMidnight.getMonth() &&
+    date.getDate() === todayMidnight.getDate()
+  ) {
+    return 'Today';
+  }
+
   return date.toLocaleDateString('en-US', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
   });
 }
+
 
 function defaultState() {
   return `

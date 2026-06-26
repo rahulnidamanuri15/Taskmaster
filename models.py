@@ -1,7 +1,7 @@
 """
 SQLAlchemy models for TaskMaster entities.
 """
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Index, Table
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Index, Table,Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -72,7 +72,7 @@ class Task(Base):
     description = Column(Text, nullable=True)
     priority = Column(Enum(PriorityEnum), nullable=False)
     status = Column(Enum(StatusEnum), nullable=False, default=StatusEnum.PENDING)
-    due_date = Column(DateTime(timezone=True), nullable=True)
+    due_date = Column(Date, nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

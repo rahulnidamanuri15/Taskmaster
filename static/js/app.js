@@ -197,6 +197,12 @@ async function handleSubmitNewTask(e) {
     return;
   }
 
+  // Validate due date is not before today
+  if (dueDate && dueDate < todayISO()) {
+    alert('Due date cannot be before today. Please select a valid date.');
+    return;
+  }
+
   // Check if user is logged in
   if (!state.user) {
     alert('Please log in to create a task');
@@ -245,11 +251,8 @@ async function handleSubmitNewTask(e) {
     }
 
     // Prepare task data for API
-    let dueDateForAPI = null;
-    if (dueDate) {
-      const [year, month, day] = dueDate.split('-');
-      dueDateForAPI = new Date(Date.UTC(Number(year), Number(month)-1, Number(day))).toISOString();
-    }
+    const dueDateForAPI = dueDate || null;
+
     const taskData = {
       title: title,
       description: description,
@@ -342,7 +345,7 @@ async function handleSubmitNewTask(e) {
       id: createdTask.id,
       title: createdTask.title,
       description: createdTask.description || '',
-      dueDate: createdTask.due_date ? new Date(createdTask.due_date).toISOString().slice(0, 10) : null,
+      dueDate: taskData.due_date ? taskData.due_date.slice(0, 10): null,
       tags: createdTask.tags || [], // Extract tags from API response
       priority: createdTask.priority,
       listId: String(createdTask.list_id), // Convert to string for consistency

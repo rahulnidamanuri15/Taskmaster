@@ -3,7 +3,7 @@ Pydantic schemas for TaskMaster entities.
 """
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List as ListType
-from datetime import datetime
+from datetime import datetime, date
 import models
 
 
@@ -84,7 +84,7 @@ class TaskBase(BaseModel):
     description: Optional[str] = None
     priority: models.PriorityEnum = models.PriorityEnum.MEDIUM
     status: models.StatusEnum = models.StatusEnum.PENDING
-    due_date: Optional[datetime] = None
+    due_date: Optional[date] = None
 
 
 class TaskCreate(TaskBase):
@@ -96,7 +96,7 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     priority: Optional[models.PriorityEnum] = None
     status: Optional[models.StatusEnum] = None
-    due_date: Optional[datetime] = None
+    due_date: Optional[date] = None
     completed_at: Optional[datetime] = None
     list_id: Optional[int] = None
 
