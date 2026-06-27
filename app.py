@@ -7,10 +7,9 @@ Run with:
 """
 # Reload trigger - fix for create_access_token_for_user parameter name
 
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.security import OAuth2PasswordRequestForm
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -45,6 +44,7 @@ def get_db():
 @app.post("/api/v1/auth/login", response_model=schemas.Token)
 async def login_for_access_token(
     login_data: schemas.LoginRequest,
+    response: Response,
     db: Session = Depends(get_db)
 ):
     user = auth.authenticate_user(db, login_data.email, login_data.password)
@@ -60,10 +60,103 @@ async def login_for_access_token(
             detail="Account is inactive",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = auth.create_access_token_for_user(
-        user_data={"sub": user.email}, remember_me=login_data.remember_me
+    # Create access token (short-lived)
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
     )
+    # Determine refresh token expiration based on remember_me
+    remember_me = login_data.remember_me
+    if remember_me:
+        refresh_token_expires = timedelta(days=auth.REFRESH_TOKEN_EXPIRE_DAYS)
+    else:
+        # If not remembering, make refresh token short-lived (same as access token)
+        refresh_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    # Include remember_me flag in refresh token payload for potential use
+    refresh_token_data = {"sub": user.email, "remember_me": remember_me}
+    refresh_token = auth.create_refresh_token(
+        data=refresh_token_data, expires_delta=refresh_token_expires
+    )
+    # Set cookies
+    # In production, set secure=True, samesite='lax' or 'strict'
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=int(access_token_expires.total_seconds()),
+        expires=int(access_token_expires.total_seconds()),
+        path="/",
+        secure=False,  # set True when using HTTPS
+        samesite="lax",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=int(refresh_token_expires.total_seconds()),
+        expires=int(refresh_token_expires.total_seconds()),
+        path="/",
+        secure=False,
+        samesite="lax",
+    )
+    # Return token info (optional, could just return success)
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.post("/api/v1/auth/refresh")
+async def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token missing",
+        )
+    try:
+        payload = jwt.decode(refresh_token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+            )
+        token_data = schemas.TokenData(email=email)
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+    user = db.query(models.User).filter(models.User.email == token_data.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+    # Issue new access token
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    new_access_token = auth.create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    # Set new access token cookie
+    response.set_cookie(
+        key="access_token",
+        value=new_access_token,
+        httponly=True,
+        max_age=int(access_token_expires.total_seconds()),
+        expires=int(access_token_expires.total_seconds()),
+        path="/",
+        secure=False,
+        samesite="lax",
+    )
+    return JSONResponse(content={"msg": "Token refreshed"})
+
+
+@app.post("/api/v1/auth/logout")
+def logout(request: Request, response: Response):
+    # Clear cookies
+    response = RedirectResponse(url="/", status_code=303)
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/")
+    return response
 
 
 # User endpoints
@@ -80,15 +173,6 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 @app.get("/api/v1/auth/me", response_model=schemas.User)
 def read_current_user(current_user: schemas.User = Depends(auth.get_current_user)):
     return current_user
-
-
-@app.post("/api/v1/auth/logout")
-def logout():
-    # In a more secure implementation, we might add the token to a blacklist
-    # For now, we just redirect to home page since JWT is stateless
-    # Use 303 See Other to convert POST to GET for the redirect
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/", status_code=303)
 
 
 @app.get("/users/", response_model=List[schemas.User])
@@ -195,7 +279,6 @@ def update_task(
         raise HTTPException(status_code=404, detail="Task not found")
     if db_task.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this task")
-
     return crud.update_task(db=db, task_id=task_id, task=task)
 
 
@@ -211,7 +294,6 @@ def delete_task(
         raise HTTPException(status_code=404, detail="Task not found")
     if db_task.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to delete this task")
-
     return crud.delete_task(db=db, task_id=task_id)
 
 
@@ -299,19 +381,19 @@ def remove_tag_from_task(
 # Landing page (home page)
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-     return templates.TemplateResponse(
-    request=request,
-    name="index.html"
-)
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html"
+    )
 
 
 # Serve login and registration pages
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-   return templates.TemplateResponse(
-    request=request,
-    name="login.html"
-)
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html"
+    )
 
 
 @app.get("/register", response_class=HTMLResponse)
@@ -325,10 +407,10 @@ async def register_page(request: Request):
 # Main application interface (requires authentication)
 @app.get("/app", response_class=HTMLResponse)
 async def app_index(request: Request):
-     return templates.TemplateResponse(
-    request=request,
-    name="app.html"
-)
+    return templates.TemplateResponse(
+        request=request,
+        name="app.html"
+    )
 
 
 # Mount the static frontend at /. html=True lets StaticFiles resolve "/" to

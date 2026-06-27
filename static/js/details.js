@@ -86,7 +86,7 @@ function selectedState(task) {
     </header>
     <article class="max-w-2xl mx-auto">
       <!-- Title -->
-      <div class=" border-b"> 
+      <div class=" border-b">
       <header class="mb-6 mt-5">
         <h2 class="font-display text-4xl font-semibold leading-tight">${task.title}</h2>
       </header>
@@ -150,14 +150,16 @@ function selectedState(task) {
       <section>
         <h3 class="text-xs uppercase tracking-widest text-muted mb-3">Activity</h3>
         <ol class="relative border-l border-border pl-5 space-y-4">
-          ${task.activity.map(a => `
+          ${task && task.activity ? task.activity.map(a => `
             <li class="relative">
               <span class="absolute -left-[26px] top-1.5 w-2.5 h-2.5 rounded-full
                            bg-white border-2 border-ink"></span>
               <p class="text-sm">${a.text}</p>
               <p class="text-xs text-muted mt-0.5">${a.at}</p>
             </li>
-          `).join('')}
+          `).join('') : `
+            <p class="text-sm text-muted italic">No activity recorded</p>
+          `}
         </ol>
       </section>
     </article>
@@ -189,8 +191,8 @@ export function renderDetails(root, { task }) {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
           },
+          credentials: 'include',
           body: JSON.stringify({ description: newDescription })
         });
 
@@ -202,7 +204,7 @@ export function renderDetails(root, { task }) {
 
         // Find the task in state and update it
         // We need to trigger a custom event that app.js can listen for
- const updateEvent = new CustomEvent('taskDescriptionUpdated', {
+        const updateEvent = new CustomEvent('taskDescriptionUpdated', {
           detail: {
             taskId: task.id,
             description: newDescription,
@@ -280,9 +282,7 @@ export function renderDetails(root, { task }) {
       try {
         const response = await fetch(`/tasks/${task.id}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-          }
+          credentials: 'include'
         });
         if (!response.ok) {
           throw new Error(`Failed to delete task: ${response.status}`);

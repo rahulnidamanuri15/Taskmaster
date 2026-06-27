@@ -107,9 +107,9 @@ export function renderSidebar(root, { counts, activeView, onNavigate, user, onLo
 
     <!-- Primary nav -->
     <nav aria-label="Smart lists" class="flex flex-col gap-1">
-      ${navItem({ view: 'inbox',     label: 'Inbox',     icon: ICON_INBOX, count: counts.inbox,     active: activeView === 'inbox' })}
-      ${navItem({ view: 'today',     label: 'Today',     icon: ICON_TODAY, count: counts.today,     active: activeView === 'today' })}
-      ${navItem({ view: 'important', label: 'Important', icon: ICON_STAR,  count: counts.important, active: activeView === 'important' })}
+      ${navItem({ view: 'inbox',     label: 'Inbox',     icon: ICON_INBOX, count: (counts && counts.inbox) !== undefined ? counts.inbox : 0,     active: activeView === 'inbox' })}
+      ${navItem({ view: 'today',     label: 'Today',     icon: ICON_TODAY, count: (counts && counts.today) !== undefined ? counts.today : 0,     active: activeView === 'today' })}
+      ${navItem({ view: 'important', label: 'Important', icon: ICON_STAR,  count: (counts && counts.important) !== undefined ? counts.important : 0, active: activeView === 'important' })}
     </nav>
 
     <!-- Priority-based filter sections -->
@@ -128,7 +128,7 @@ export function renderSidebar(root, { counts, activeView, onNavigate, user, onLo
             <span class="priority-dot bg-prioHigh"></span>
             <span class="text-sm font-medium">Work</span>
           </span>
-          <span class="text-xs text-muted">(${counts.priority?.high ?? 0})</span>
+          <span class="text-xs text-muted">${(counts && counts.priority && counts.priority.high) !== undefined ? counts.priority.high : 0}</span>
         </button>
 
         <!-- Personal (Medium Priority) -->
@@ -143,7 +143,7 @@ export function renderSidebar(root, { counts, activeView, onNavigate, user, onLo
             <span class="priority-dot bg-prioMed"></span>
             <span class="text-sm font-medium">Personal</span>
           </span>
-          <span class="text-xs text-muted">(${counts.priority?.medium ?? 0})</span>
+          <span class="text-xs text-muted">${(counts && counts.priority && counts.priority.medium) !== undefined ? counts.priority.medium : 0}</span>
         </button>
 
         <!-- Reading List (Low Priority) -->
@@ -158,7 +158,7 @@ export function renderSidebar(root, { counts, activeView, onNavigate, user, onLo
             <span class="priority-dot bg-prioLow"></span>
             <span class="text-sm font-medium">Reading List</span>
           </span>
-          <span class="text-xs text-muted">(${counts.priority?.low ?? 0})</span>
+          <span class="text-xs text-muted">${(counts && counts.priority && counts.priority.low) !== undefined ? counts.priority.low : 0}</span>
         </button>
       </div>
     </div>

@@ -173,7 +173,7 @@
         id="login-button"
         class="w-full bg-ink text-white px-4 py-3 rounded-lg font-medium hover:bg-ink/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Sign in 
+        Sign in
       </button>
     </form>
 
@@ -269,6 +269,7 @@
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(loginData)
       })
       .then(response => {
@@ -278,9 +279,7 @@
         return response.json();
       })
       .then(data => {
-        // Store token in localStorage or cookie
-        localStorage.setItem('access_token', data.access_token);
-
+        // No longer storing token in localStorage; it's stored in HttpOnly cookie
         // Redirect to dashboard/main app
         window.location.href = '/app';
       })

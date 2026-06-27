@@ -5,6 +5,28 @@ import { renderTaskList } from './tasks.js';
 import { renderDetails } from './details.js';
 import { PRIORITY_COLOR } from './sidebar.js';
 
+// Authenticated fetch with automatic refresh token handling
+async function authFetch(input, init = {}) {
+  const opts = { ...init, credentials: 'include' };
+  let response = await fetch(input, opts);
+  if (response.status === 401 && !input.endsWith('/api/v1/auth/refresh')) {
+    // Attempt to refresh access token
+    const refreshResp = await fetch('/api/v1/auth/refresh', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    if (refreshResp.ok) {
+      // Retry original request
+      response = await fetch(input, opts);
+    } else {
+      // Refresh failed – redirect to login
+      window.location.href = '/login';
+      return Promise.reject(new Error('Session expired'));
+    }
+  }
+  return response;
+}
+
 // Activity persistence helpers
 const ACTIVITY_STORAGE_PREFIX = 'taskmaster-activity-';
 function getStoredActivity(taskId) {
@@ -33,7 +55,7 @@ function removeStoredActivity(taskId) {
 let state = {
   // Views configuration
   views: {
-    inbox: { name: 'Inbox', icon: null }, // Icon will be imported if needed
+    inbox: { name: 'Inbox', icon: null },
     today: { name: 'Today', icon: null },
     important: { name: 'Important', icon: null },
     work: { name: 'Work', icon: null },
@@ -159,12 +181,7 @@ async function handleTaskSelect(id) {
   }
 
   try {
-    const response = await fetch(`/tasks/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-      }
-    });
-
+    const response = await authFetch(`/tasks/${id}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch task: ${response.status}`);
     }
@@ -187,7 +204,7 @@ async function handleTaskSelect(id) {
     const storedActivity = getStoredActivity(id);
     const activityToUse = activityFromBackend.length > 0 ? activityFromBackend
       : (storedActivity && storedActivity.length > 0 ? storedActivity
-        : (existingActivity.length > 0 ? existingActivity
+        : (existingActivity && existingActivity.length > 0 ? existingActivity
           : [{
             at: new Date().toISOString().slice(0, 16).replace('T', ' '),
             text: 'Task loaded from database'
@@ -214,6 +231,9 @@ async function handleTaskSelect(id) {
       state.tasks[taskIndex] = frontendTask;
     }
 
+    // Persist the activity we are using
+    setStoredActivity(id, activityToUse);
+
     state.selectedTaskId = id;
     render();
   } catch (error) {
@@ -230,6 +250,10 @@ function handleTaskToggle(id) {
     task.completed = !task.completed;
     // Update activity log
     const actionText = task.completed ? 'You completed this task' : 'You marked this task as incomplete';
+    // Initialize activity array if it doesn't exist
+    if (!Array.isArray(task.activity)) {
+      task.activity = [];
+    }
     task.activity.push({
       at: new Date().toISOString().slice(0, 16).replace('T', ' '), // Format: YYYY-MM-DD HH:MM
       text: actionText
@@ -240,7 +264,7 @@ function handleTaskToggle(id) {
   render();
 }
 
-function handleToggleImportant(id) {
+async function handleToggleImportant(id) {
   const task = state.tasks.find(t => t.id === id);
   if (!task) return;
 
@@ -250,6 +274,10 @@ function handleToggleImportant(id) {
   task.is_important = newImportant;
   // Update activity log
   const actionText = newImportant ? 'You marked this task as important' : 'You removed this task from important';
+  // Initialize activity array if it doesn't exist
+  if (!Array.isArray(task.activity)) {
+    task.activity = [];
+  }
   task.activity.push({
     at: new Date().toISOString().slice(0, 16).replace('T', ' '),
     text: actionText
@@ -259,28 +287,28 @@ function handleToggleImportant(id) {
 
   // Send update to server
   if (state.user) {
-    fetch(`/tasks/${id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-      },
-      body: JSON.stringify({ is_important: newImportant })
-    })
-    .then(response => {
+    try {
+      const response = await authFetch(`/tasks/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ is_important: newImportant })
+      });
       if (!response.ok) {
         throw new Error('Failed to update task importance');
       }
       // Persist activity on success
       setStoredActivity(id, task.activity);
       // Optionally, we could update the task with the server's response, but we are optimistic
-    })
-    .catch(error => {
+    } catch (error) {
       console.error('Error updating task importance:', error);
       // Revert the optimistic update
       task.is_important = !newImportant;
       // Remove the last activity we added (the optimistic one)
-      task.activity.pop();
+      if (task.activity.length > 0) {
+        task.activity.pop();
+      }
       // Optionally add an error activity
       task.activity.push({
         at: new Date().toISOString().slice(0, 16).replace('T', ' '),
@@ -289,7 +317,7 @@ function handleToggleImportant(id) {
       // Persist after rollback
       setStoredActivity(id, task.activity);
       render();
-    });
+    }
   }
 }
 
@@ -337,12 +365,7 @@ async function handleSubmitNewTask(e) {
 
   try {
     // Fetch user's lists to get a valid list_id
-    const listsResponse = await fetch(`/users/${state.user.id}/lists/`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-      }
-    });
-
+    const listsResponse = await authFetch(`/users/${state.user.id}/lists/`);
     if (!listsResponse.ok) {
       throw new Error('Failed to fetch user lists');
     }
@@ -352,11 +375,10 @@ async function handleSubmitNewTask(e) {
     let listId;
     if (lists.length === 0) {
       // Create a default list
-      const createListResponse = await fetch(`/users/${state.user.id}/lists/`, {
+      const createListResponse = await authFetch(`/users/${state.user.id}/lists/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         },
         body: JSON.stringify({ name: 'Inbox' })
       });
@@ -383,86 +405,69 @@ async function handleSubmitNewTask(e) {
       description: description,
       priority: priority, // already lowercase, matches enum
       status: 'pending', // default status
-      due_date: dueDateForAPI, // Convert to ISO string in UTC to avoid timezone issues
-      list_id: listId
+      due_date: dueDateForAPI // Convert to ISO string in UTC to avoid timezone issues
     };
 
-    const response = await fetch(`/users/${state.user.id}/tasks/`, {
+    const createTaskResponse = await authFetch(`/users/${state.user.id}/tasks/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
       },
       body: JSON.stringify(taskData)
     });
 
-    if (!response.ok) {
-      throw new Error(`Failed to create task: ${response.status}`);
+    if (!createTaskResponse.ok) {
+      throw new Error(`Failed to create task: ${createTaskResponse.status}`);
     }
 
-    let createdTask = await response.json();
+    let createdTask = await createTaskResponse.json();
 
     // Handle tags if any were provided
     if (tags && tags.length > 0) {
-      // For each tag, either find existing or create new, then attach to task
-      for (const tagName of tags) {
-        try {
-          // First, try to find if this tag already exists for the user
-          const tagsResponse = await fetch(`/users/${state.user.id}/tags/`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        for (const tagName of tags) {
+            try {
+                const tagsResponse = await authFetch(`/users/${state.user.id}/tags/`);
+
+                if (tagsResponse.ok) {
+                    const existingTags = await tagsResponse.json();
+                    let tag = existingTags.find(
+                        t => t.name.toLowerCase() === tagName.toLowerCase()
+                    );
+
+                    if (!tag) {
+                        const createTagResponse = await authFetch(
+                            `/users/${state.user.id}/tags/`,
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ name: tagName })
+                            }
+                        );
+
+                        if (createTagResponse.ok) {
+                            tag = await createTagResponse.json();
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    // Attach the tag to the task (whether found or created)
+                    await authFetch(`/tasks/${createdTask.id}/tags/${tag.id}`, {
+                        method: 'POST'
+                    });
+                }
+            } catch (tagError) {
+                console.warn(`Error processing tag ${tagName}:`, tagError);
             }
-          });
-
-          if (tagsResponse.ok) {
-            const existingTags = await tagsResponse.json();
-            let tag = existingTags.find(t => t.name.toLowerCase() === tagName.toLowerCase());
-
-            if (!tag) {
-              // Tag doesn't exist, create it
-              const createTagResponse = await fetch(`/users/${state.user.id}/tags/`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                },
-                body: JSON.stringify({ name: tagName })
-              });
-
-              if (createTagResponse.ok) {
-                tag = await createTagResponse.json();
-              } else {
-                console.warn(`Failed to create tag: ${tagName}`);
-                continue;
-              }
-            }
-
-            // Now attach the tag to the task
-            await fetch(`/tasks/${createdTask.id}/tags/${tag.id}`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-              }
-            });
-          }
-        } catch (tagError) {
-          console.warn(`Error processing tag ${tagName}:`, tagError);
-          // Continue with other tags even if one fails
         }
-      }
 
-      // After adding all tags, fetch the updated task to get the tags
-      const updatedTaskResponse = await fetch(`/tasks/${createdTask.id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        // Get updated task with tags
+        const updatedTaskResponse = await authFetch(`/tasks/${createdTask.id}`);
+        if (updatedTaskResponse.ok) {
+            createdTask = await updatedTaskResponse.json();
         }
-      });
-
-      if (updatedTaskResponse.ok) {
-        const updatedTask = await updatedTaskResponse.json();
-        // Use the updated task which now includes the tags
-        createdTask = updatedTask;
-      }
     }
 
     // Convert backend task to frontend task object
@@ -502,23 +507,11 @@ async function handleSubmitNewTask(e) {
 
 // Authentication handlers
 async function checkAuthStatus() {
-  const token = localStorage.getItem('access_token');
-  if (!token) {
-    state.user = null;
-    return false;
-  }
-
   try {
-    const response = await fetch('/api/v1/auth/me', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
+    const response = await authFetch('/api/v1/auth/me');
     if (!response.ok) {
       throw new Error('Unauthorized');
     }
-
     const userData = await response.json();
     state.user = {
       id: userData.id,
@@ -529,6 +522,7 @@ async function checkAuthStatus() {
     return true;
   } catch (error) {
     console.error('Auth check failed:', error);
+    // Clear any leftover token from localStorage (should not be used)
     localStorage.removeItem('access_token');
     state.user = null;
     return false;
@@ -541,7 +535,7 @@ function handleLogin() {
 
 async function handleLogout() {
   try {
-    await fetch('/api/v1/auth/logout', {
+    await authFetch('/api/v1/auth/logout', {
       method: 'POST'
     });
   } catch (error) {
@@ -550,7 +544,7 @@ async function handleLogout() {
   }
 
   try {
-    // Clear localStorage
+    // Clear localStorage (just in case)
     localStorage.removeItem('access_token');
     // Update state
     state.user = null;
@@ -595,11 +589,7 @@ function init() {
     if (state.user) {
       try {
         // Fetch user's lists
-        const listsResponse = await fetch(`/users/${state.user.id}/lists/`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-          }
-        });
+        const listsResponse = await authFetch(`/users/${state.user.id}/lists/`);
         if (listsResponse.ok) {
           state.lists = await listsResponse.json();
         } else {
@@ -608,80 +598,62 @@ function init() {
         }
 
         // Fetch user tasks
-        const tasksResponse = await fetch(`/users/${state.user.id}/tasks/`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-          }
-        });
+        const tasksResponse = await authFetch(`/users/${state.user.id}/tasks/`);
         if (tasksResponse.ok) {
-          const fetchedTasks = await tasksResponse.json();
-          // Convert backend tasks to frontend format
-          state.tasks = fetchedTasks.map(task => {
-            const stored = getStoredActivity(task.id);
-            const backendActivity = task.activity || task.activity_log || task.activities || [];
-            const activityToUse = stored && stored.length > 0 ? stored
-              : (Array.isArray(backendActivity) && backendActivity.length > 0 ? backendActivity
-                : [{
-                  at: new Date().toISOString().slice(0, 16).replace('T', ' '),
-                  text: 'Task loaded from database'
-                }]);
+          const tasksData = await tasksResponse.json();
+          // Convert backend tasks to frontend task objects
+          state.tasks = tasksData.map(task => {
+            const storedActivity = getStoredActivity(task.id);
+            let activity;
+            if (storedActivity && storedActivity.length > 0) {
+              activity = storedActivity;
+            } else {
+              activity = [{
+                at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+                text: 'Task loaded from database'
+              }];
+              // Store the default activity so that it persists across reloads
+              setStoredActivity(task.id, activity);
+            }
             return {
               id: task.id,
               title: task.title,
               description: task.description || '',
               dueDate: task.due_date ? new Date(task.due_date).toISOString().slice(0, 10) : null,
-              tags: task.tags || [], // Extract tags from API response
+              tags: task.tags || [],
               priority: task.priority,
               listId: String(task.list_id),
               completed: task.status === 'completed',
               is_important: task.is_important,
               notes: '',
-              activity: activityToUse
+              activity: activity
             };
           });
         } else {
           console.warn('Failed to fetch tasks');
-          state.tasks = []; // No fallback to mock data
+          state.tasks = [];
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
-        state.tasks = []; // No fallback to mock data
+        console.error('Error fetching user data:', error);
+        state.user = null;
         state.lists = [];
+        state.tasks = [];
       }
-    } else {
-      // Not logged in, no data to show
-      state.tasks = [];
-      state.lists = [];
     }
-
-    // Initialize list views in state (needs to happen after lists are set)
-    state.lists.forEach(list => {
-      state.views[`list-${list.id}`] = {
-        name: list.name,
-        icon: null // We could import icons if needed, but sidebar renders them internally
-      };
-    });
 
     // Initial render
     render();
   });
 }
 
-// Render function - updates all components based on current state
+// Render function
 function render() {
-  const filteredTasks = getFilteredTasks();
-
-  // Get counts for sidebar
+  // Compute counts for sidebar
+  const today = todayISO();
   const counts = {
     inbox: state.tasks.length,
-    today: state.tasks.filter(task => task.dueDate === todayISO()).length,
+    today: state.tasks.filter(task => task.dueDate === today).length,
     important: state.tasks.filter(task => task.is_important).length,
-    lists: Object.fromEntries(
-      state.lists.map(list => [
-        list.id,
-        state.tasks.filter(task => task.listId === list.id).length
-      ])
-    ),
     priority: {
       high: state.tasks.filter(task => task.priority === 'high').length,
       medium: state.tasks.filter(task => task.priority === 'medium').length,
@@ -689,18 +661,16 @@ function render() {
     }
   };
 
-  // Render sidebar
   renderSidebar(sidebarEl, {
-    counts,
+    counts: counts,
     activeView: state.activeView,
-    onNavigate: handleNavigate,
     user: state.user,
+    onNavigate: handleNavigate,
     onLogin: handleLogin,
     onLogout: handleLogout,
     lists: state.lists
   });
 
-  // Render task list panel
   renderTaskList(taskListEl, {
     viewName: getViewName(),
     remainingCount: getRemainingCount(),
@@ -713,77 +683,35 @@ function render() {
     onNewTask: handleNewTask
   });
 
-  // Render details panel
-  const selectedTask = state.tasks.find(task => task.id === state.selectedTaskId);
-  const taskForDetails = selectedTask
-    ? {
-        ...selectedTask,
-        isEditing: selectedTask && state.editingTaskId === selectedTask.id
+  renderDetails(detailsEl, {
+    task: state.selectedTaskId ? state.tasks.find(t => t.id === state.selectedTaskId) : null,
+    onEditRequested: (taskId) => {
+      state.editingTaskId = taskId;
+      // The details component will handle switching to edit mode internally
+    },
+    onEditCancelled: () => {
+      state.editingTaskId = null;
+      // The details component will handle switching back to view mode
+    },
+    onDescriptionUpdated: (event) => {
+      // Handle description update from details component
+      const { taskId, description, updatedTask } = event.detail;
+      // Update task in state
+      const taskIndex = state.tasks.findIndex(t => t.id === taskId);
+      if (taskIndex !== -1) {
+        state.tasks[taskIndex] = {
+          ...state.tasks[taskIndex],
+          description: description
+        };
+        // Persist activity update? The details component handles activity updates via its own events
       }
-    : null;
-  renderDetails(detailsEl, { task: taskForDetails });
+      // Clear editing state
+      state.editingTaskId = null;
+      // Re-render to show updated task
+      render();
+    }
+  });
 }
 
-// Start the application when the DOM is loaded
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
-
-// Export state for debugging purposes (optional)
-window.__TASKMASTER_STATE__ = state;
-
-// Event listeners for description editing
-detailsEl.addEventListener('taskEditRequested', (e) => {
-  state.editingTaskId = e.detail.taskId;
-  render();
-});
-
-detailsEl.addEventListener('taskEditCancelled', (e) => {
-  state.editingTaskId = null;
-  render();
-});
-
-detailsEl.addEventListener('taskDescriptionUpdated', (e) => {
-  const { taskId, description, updatedTask } = e.detail;
-
-  // Update the task in state.tasks
-  const taskIndex = state.tasks.findIndex(task => task.id === taskId);
-  if (taskIndex !== -1) {
-    state.tasks[taskIndex] = {
-      ...state.tasks[taskIndex],
-      description: description
-    };
-  }
-
-  // Clear editing state
-  state.editingTaskId = null;
-
-  // Re-render to show updated task
-  render();
-});
-
-// New event listeners for task selection and deletion
-detailsEl.addEventListener('taskUnselected', (e) => {
-  state.selectedTaskId = null;
-  render();
-});
-
-detailsEl.addEventListener('taskDeleteRequested', (e) => {
-  const taskId = e.detail.taskId;
-  // Remove task from state.tasks
-  state.tasks = state.tasks.filter(t => t.id !== taskId);
-  if (state.selectedTaskId === taskId) {
-    state.selectedTaskId = null;
-  }
-  // Remove stored activity
-  removeStoredActivity(taskId);
-  render();
-});
-
-// New: toggle completion via checkbox in details header
-detailsEl.addEventListener('taskToggleRequested', (e) => {
-  const taskId = e.detail.taskId;
-  handleTaskToggle(taskId);
-});
+// Start the application
+init();
