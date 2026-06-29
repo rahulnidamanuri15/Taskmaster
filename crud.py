@@ -1,4 +1,3 @@
-
 """
 CRUD operations for TaskMaster entities.
 """
@@ -7,6 +6,9 @@ from typing import List, Optional
 import models
 import schemas
 from auth import get_password_hash
+import bcrypt
+import secrets
+from datetime import datetime, timedelta
 
 
 # User CRUD
@@ -226,3 +228,113 @@ def get_tasks_for_tag(db: Session, tag_id: int):
         models.task_tags,
         models.Task.id == models.task_tags.c.task_id
     ).filter(models.task_tags.c.tag_id == tag_id).all()
+
+
+# Password Reset Token CRUD
+def create_password_reset_token(db: Session, email: str, user_id: int, otp_hash: str, expires_at: datetime) -> models.PasswordResetToken:
+    """
+    Create a new password reset token.
+
+    Args:
+        db: Database session
+        email: User's email address
+        user_id: User ID
+        otp_hash: Hashed OTP code
+        expires_at: Expiration timestamp
+
+    Returns:
+        Created PasswordResetToken object
+    """
+    # First invalidate any existing unused tokens for this user/email
+    db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.user_id == user_id,
+        models.PasswordResetToken.email == email,
+        models.PasswordResetToken.is_used == 0
+    ).update({"is_used": 1})
+
+    db_token = models.PasswordResetToken(
+        email=email,
+        user_id=user_id,
+        otp_hash=otp_hash,
+        expires_at=expires_at,
+        attempts=0,
+        is_used=0
+    )
+    db.add(db_token)
+    db.commit()
+    db.refresh(db_token)
+    return db_token
+
+
+def get_password_reset_token_by_email_and_hash(db: Session, email: str, otp_hash: str) -> Optional[models.PasswordResetToken]:
+    """
+    Get a password reset token by email and OTP hash.
+
+    Args:
+        db: Database session
+        email: User's email address
+        otp_hash: Hashed OTP code to match
+
+    Returns:
+        PasswordResetToken object if found and valid, None otherwise
+    """
+    return db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.email == email,
+        models.PasswordResetToken.otp_hash == otp_hash,
+        models.PasswordResetToken.is_used == 0
+    ).first()
+
+
+def increment_password_reset_attempts(db: Session, token_id: int) -> Optional[models.PasswordResetToken]:
+    """
+    Increment the attempt counter for a password reset token.
+
+    Args:
+        db: Database session
+        token_id: Token ID
+
+    Returns:
+        Updated PasswordResetToken object if found, None otherwise
+    """
+    db_token = db.query(models.PasswordResetToken).filter(models.PasswordResetToken.id == token_id).first()
+    if db_token:
+        db_token.attempts += 1
+        db.commit()
+        db.refresh(db_token)
+    return db_token
+
+
+def mark_password_reset_token_as_used(db: Session, token_id: int) -> Optional[models.PasswordResetToken]:
+    """
+    Mark a password reset token as used.
+
+    Args:
+        db: Database session
+        token_id: Token ID
+
+    Returns:
+        Updated PasswordResetToken object if found, None otherwise
+    """
+    db_token = db.query(models.PasswordResetToken).filter(models.PasswordResetToken.id == token_id).first()
+    if db_token:
+        db_token.is_used = 1
+        db.commit()
+        db.refresh(db_token)
+    return db_token
+
+
+def cleanup_expired_reset_tokens(db: Session) -> int:
+    """
+    Clean up expired password reset tokens.
+
+    Args:
+        db: Database session
+
+    Returns:
+        Number of tokens deleted
+    """
+    result = db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.expires_at < datetime.utcnow()
+    ).delete()
+    db.commit()
+    return result

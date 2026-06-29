@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify Code - Taskmaster</title>
+
+  <!-- Fonts: Playfair Display for headings, Inter for body -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Tailwind via Play CDN (no build step). Custom theme tokens below. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"Playfair Display"', 'serif'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            beige: '#F6F3ED',
+            sidebar: '#F1ECE3',
+            border: '#D8D1C7',
+            ink: '#1F1F1F',
+            muted: '#7A746D',
+            prioHigh: '#A9332A',
+            prioMed: '#C17B21',
+            prioLow: '#2E7D32',
+          },
+        },
+      },
+    };
+  </script>
+
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <style>
+    /* Custom styles for auth pages */
+    .logo-square {
+      width: 2.5rem;
+      height: 2.5rem;
+      background-color: #1A1816;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 0.75rem;
+    }
+
+    .logo-letter {
+      color: white;
+      font-weight: bold;
+      font-size: 1.5rem;
+    }
+
+    .auth-container {
+      max-width: 420px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    .input-group {
+      position: relative;
+    }
+
+    .input-icon {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #7A746D;
+      cursor: pointer;
+    }
+
+    .input-icon:hover {
+      color: #1F1F1F;
+    }
+
+    /* Style for OTP input fields */
+    .otp-input {
+      width: 4.5rem;
+      height: 3rem;
+      font-size: 1.5rem;
+      text-align: center;
+      font-feature-settings: "tnum";
+    }
+  </style>
+</head>
+<body class="bg-beige font-sans text-ink antialiased min-h-screen flex items-center justify-center">
+  <div class="auth-container">
+    <!-- Logo and Title -->
+    <div class="flex items-center mb-6">
+      <div class="logo-square">
+        <span class="logo-letter">T</span>
+      </div>
+      <span class="text-2xl font-display font-semibold">TaskMaster</span>
+    </div>
+
+    <!-- Title -->
+    <h1 class="text-2xl font-display font-semibold mb-6 text-center">Verify Your Identity</h1>
+
+    <!-- Subtitle -->
+    <p class="text-center text-muted mb-6">
+      We've sent a 6-digit verification code to your email. Please enter it below.
+    </p>
+
+    <!-- Timer Display -->
+    <div class="mb-4 text-center text-sm">
+      <p id="timer-text" class="text-muted">Code expires in: <span id="timer-countdown">10:00</span></p>
+      <p id="resend-timer-text" class="text-muted hidden">Resend available in: <span id="resend-countdown">60</span> seconds</p>
+    </div>
+
+    <!-- Verification Form -->
+    <form id="verify-code-form" class="space-y-6">
+      <!-- Email (hidden, for form submission) -->
+      <input type="hidden" id="email" name="email" value="" />
+
+      <!-- OTP Input -->
+      <div class="space-y-4">
+        <div class="grid grid-cols-6 gap-2">
+          <div>
+            <input
+              type="text"
+              id="digit1"
+              name="digit1"
+              maxlength="1"
+              inputmode="numeric"
+              class="otp-input border border-border rounded-lg text-center font-mono text-lg focus:outline-none focus:ring-2 focus:ring-ink/30"
+              autocomplete="one-time-code"
+            />
+          </div>
+          <div>
+            <input
+              type="text"
+              id="digit2"
+              name="digit2"
+              maxlength="1"
+              inputmode="numeric"
+              class="otp-input border border-border rounded-lg text-center font-mono text-lg focus:outline-none focus:ring-2 focus:ring-ink/30"
+              autocomplete="one-time-code"
+            />
+          </div>
+          <div>
+            <input
+              type="text"
+              id="digit3"
+              name="digit3"
+              maxlength="1"
+              inputmode="numeric"
+              class="otp-input border border-border rounded-lg text-center font-mono text-lg focus:outline-none focus:ring-2 focus:ring-ink/30"
+              autocomplete="one-time-code"
+            />
+          </div>
+          <div>
+            <input
+              type="text"
+              id="digit4"
+              name="digit4"
+              maxlength="1"
+              inputmode="numeric"
+              class="otp-input border border-border rounded-lg text-center font-mono text-lg focus:outline-none focus:ring-2 focus:ring-ink/30"
+              autocomplete="one-time-code"
+            />
+          </div>
+          <div>
+            <input
+              type="text"
+              id="digit5"
+              name="digit5"
+              maxlength="1"
+              inputmode="numeric"
+              class="otp-input border border-border rounded-lg text-center font-mono text-lg focus:outline-none focus:ring-2 focus:ring-ink/30"
+              autocomplete="one-time-code"
+            />
+          </div>
+          <div>
+            <input
+              type="text"
+              id="digit6"
+              name="digit6"
+              maxlength="1"
+              inputmode="numeric"
+              class="otp-input border border-border rounded-lg text-center font-mono text-lg focus:outline-none focus:ring-2 focus:ring-ink/30"
+              autocomplete="one-time-code"
+            />
+          </div>
+        </div>
+        <p id="otp-error" class="text-sm text-red-500 text-center hidden"></p>
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        id="submit-button"
+        class="w-full bg-ink text-white px-4 py-3 rounded-lg font-medium hover:bg-ink/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Verify Code
+      </button>
+      <p id="resend-link" class="text-center text-muted mt-4">
+        <a href="#" class="hover:text-ink transition-colors" id="resend-link-text">Resend Code</a>
+      </p>
+    </form>
+
+    <!-- Back to Login -->
+    <div class="mt-8 text-center text-sm">
+      <p class="text-muted">
+        <a href="/login" class="text-ink font-medium hover:text-ink/80 transition-colors">Back to Login</a>
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-12 text-center text-xs text-muted">© 2026 TaskMaster. All rights reserved.</div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.getElementById('verify-code-form');
+      const submitButton = document.getElementById('submit-button');
+      const otpError = document.getElementById('otp-error');
+      const timerText = document.getElementById('timer-text');
+      const timerCountdown = document.getElementById('timer-countdown');
+      const resendTimerText = document.getElementById('resend-timer-text');
+      const resendCountdown = document.getElementById('resend-countdown');
+      const resendLink = document.getElementById('resend-link');
+      const resendLinkText = document.getElementById('resend-link-text');
+
+      // Get email from localStorage (set in forgot-password.js)
+      const email = localStorage.getItem('forgotPasswordEmail') || '';
+      document.getElementById('email').value = email;
+
+      // Timer variables
+      let timeLeft = 600; // 10 minutes in seconds
+      let resendTimeLeft = 60; // 60 seconds for resend cooldown
+      let timerInterval = null;
+      let resendTimerInterval = null;
+
+      // Format time as MM:SS
+      function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      }
+
+      // Start the main timer
+      function startTimer() {
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+          timeLeft--;
+          timerCountdown.textContent = formatTime(timeLeft);
+
+          if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            timerText.textContent = 'Code has expired';
+            resendLinkText.textContent = 'Request New Code';
+            resendLink.style.pointerEvents = 'auto';
+            resendLink.classList.remove('text-muted');
+          }
+        }, 1000);
+      }
+
+      // Start the resend timer
+      function startResendTimer() {
+        clearInterval(resendTimerInterval);
+        resendTimeLeft = 60;
+        resendTimerText.classList.remove('hidden');
+        resendLinkText.textContent = 'Resend Code';
+        resendLink.style.pointerEvents = 'none';
+        resendLink.classList.add('text-muted');
+
+        resendTimerInterval = setInterval(() => {
+          resendTimeLeft--;
+          resendCountdown.textContent = resendTimeLeft;
+
+          if (resendTimeLeft <= 0) {
+            clearInterval(resendTimerInterval);
+            resendTimerText.classList.add('hidden');
+            resendLinkText.textContent = 'Resend Code';
+            resendLink.style.pointerEvents = 'auto';
+            resendLink.classList.remove('text-muted');
+          }
+        }, 1000);
+      }
+
+      // Initialize timers
+      startTimer();
+      startResendTimer();
+
+      // OTP input auto-focus and navigation
+      const inputs = [
+        document.getElementById('digit1'),
+        document.getElementById('digit2'),
+        document.getElementById('digit3'),
+        document.getElementById('digit4'),
+        document.getElementById('digit5'),
+        document.getElementById('digit6')
+      ];
+
+      inputs.forEach((input, index) => {
+        // Move to next input when maxlength is reached
+        input.addEventListener('input', function() {
+          if (this.value.length === this.maxLength) {
+            if (index < inputs.length - 1) {
+              inputs[index + 1].focus();
+            }
+          }
+
+          // Clear error when typing
+          otpError.classList.add('hidden');
+        });
+
+        // Move to previous input on backspace if empty
+        input.addEventListener('keydown', function(e) {
+          if (e.key === 'Backspace' && this.value.length === 0 && index > 0) {
+            e.preventDefault();
+            inputs[index - 1].focus();
+          }
+        });
+
+        // Paste handling
+        input.addEventListener('paste', function(e) {
+          e.preventDefault();
+          const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+          const digits = pastedText.replace(/\D/g, '').substring(0, 6);
+
+          digits.split('').forEach((digit, i) => {
+            if (inputs[i]) {
+              inputs[i].value = digit;
+              if (i < inputs.length - 1) {
+                inputs[i + 1].focus();
+              }
+            }
+          });
+        });
+      });
+
+      // Focus first input on load
+      setTimeout(() => {
+        inputs[0].focus();
+      }, 100);
+
+      // Handle form submission
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // Get OTP value
+        const otp = inputs.map(input => input.value).join('');
+
+        // Validate OTP
+        if (!otp || otp.length !== 6 || !/^\d+$/.test(otp)) {
+          otpError.textContent = 'Please enter a valid 6-digit code';
+          otpError.classList.remove('hidden');
+          return;
+        }
+
+        // Show loading state
+        const originalText = submitButton.innerHTML;
+        submitButton.innerHTML = 'Verifying...';
+        submitButton.disabled = true;
+
+        // Prepare data for API
+        const verifyCodeData = {
+          email: email,
+          code: otp
+        };
+
+        // Send request to backend
+        fetch('/api/v1/auth/verify-reset-code', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(verifyCodeData)
+        })
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(err => { throw err; });
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Clear timers
+          clearInterval(timerInterval);
+          clearInterval(resendTimerInterval);
+
+          // Store email and code for reset password step
+          localStorage.setItem('resetEmail', email);
+          localStorage.setItem('resetCode', otp);
+          localStorage.setItem('verifiedForReset', 'true');
+
+          // Redirect to reset password page
+          window.location.href = '/reset-password.html';
+        })
+        .catch(error => {
+          console.error('Verify code error:', error);
+
+          // Show error message
+          if (error.detail) {
+            otpError.textContent = error.detail;
+            otpError.classList.remove('hidden');
+          } else {
+            alert('An error occurred. Please try again.');
+          }
+
+          // Increment attempt counter on the backend (handled by API)
+          // For wrong code, we could show remaining attempts if API returned them
+
+          // Reset button state
+          submitButton.innerHTML = originalText;
+          submitButton.disabled = false;
+        })
+        .finally(() => {
+          // Ensure button is reset
+          submitButton.innerHTML = originalText;
+          submitButton.disabled = false;
+        });
+      });
+
+      // Handle resend link click
+      resendLink.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        // Check if resend is allowed
+        if (resendLink.style.pointerEvents === 'none') {
+          return;
+        }
+
+        // Show loading state on resend link
+        const originalText = resendLinkText.textContent;
+        resendLinkText.textContent = 'Sending...';
+        resendLink.style.pointerEvents = 'none';
+        resendLink.classList.add('text-muted');
+
+        // Prepare data for API
+        const forgotPasswordData = {
+          email: email
+        };
+
+        // Send request to backend
+        fetch('/api/v1/auth/forgot-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(forgotPasswordData)
+        })
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(err => { throw err; });
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Reset OTP inputs
+          inputs.forEach(input => input.value = '');
+          inputs[0].focus();
+
+          // Reset error message
+          otpError.textContent = '';
+          otpError.classList.add('hidden');
+
+          // Reset timers
+          timeLeft = 600; // 10 minutes
+          resendTimeLeft = 60; // 60 seconds
+
+          // Update UI
+          timerCountdown.textContent = formatTime(timeLeft);
+          resendCountdown.textContent = resendTimeLeft;
+          resendTimerText.classList.remove('hidden');
+          resendLinkText.textContent = 'Resend Code';
+          resendLink.style.pointerEvents = 'auto';
+          resendLink.classList.remove('text-muted');
+
+          // Restart timers
+          startTimer();
+          startResendTimer();
+
+          // Show success message (optional)
+          alert('A new verification code has been sent to your email');
+        })
+        .catch(error => {
+          console.error('Resend error:', error);
+          alert('Failed to send new code. Please try again.');
+
+          // Reset button
+          resendLinkText.textContent = 'Resend Code';
+          resendLink.style.pointerEvents = 'auto';
+          resendLink.classList.remove('text-muted');
+        })
+        .finally(() => {
+          // Ensure link is reset
+          resendLinkText.textContent = 'Resend Code';
+        });
+      });
+    });
+  </script>
+</body>
+</html>

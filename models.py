@@ -1,7 +1,7 @@
 """
 SQLAlchemy models for TaskMaster entities.
 """
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Index, Table,Date
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Index, Table, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -39,6 +39,23 @@ class User(Base):
     lists = relationship("List", back_populates="owner", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="owner", cascade="all, delete-orphan")
     tags = relationship("Tag", back_populates="owner", cascade="all, delete-orphan")
+
+
+# Password reset token model
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    email = Column(String(255), nullable=False, index=True)  # For lookup by email
+    otp_hash = Column(String(255), nullable=False)  # Bcrypt hashed OTP
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    attempts = Column(Integer, default=0, nullable=False)  # Failed attempts counter
+    is_used = Column(Integer, default=0, nullable=False)  # Boolean as integer for SQLite
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User")
 
 
 # List model

@@ -244,24 +244,54 @@ async function handleTaskSelect(id) {
   }
 }
 
-function handleTaskToggle(id) {
+async function handleTaskToggle(id) {
   const task = state.tasks.find(t => t.id === id);
-  if (task) {
-    task.completed = !task.completed;
-    // Update activity log
-    const actionText = task.completed ? 'You completed this task' : 'You marked this task as incomplete';
-    // Initialize activity array if it doesn't exist
-    if (!Array.isArray(task.activity)) {
-      task.activity = [];
-    }
-    task.activity.push({
-      at: new Date().toISOString().slice(0, 16).replace('T', ' '), // Format: YYYY-MM-DD HH:MM
-      text: actionText
-    });
-    // Persist activity
-    setStoredActivity(id, task.activity);
-  }
+  if (!task) return;
+
+  const completed = !task.completed;
+
+  // Optimistic update
+  task.completed = completed;
+
+  if (!Array.isArray(task.activity))
+    task.activity = [];
+
+  task.activity.push({
+    at: new Date().toISOString().slice(0,16).replace('T',' '),
+    text: completed
+      ? 'You completed this task'
+      : 'You marked this task as incomplete'
+  });
+
   render();
+
+  try {
+    const response = await authFetch(`/tasks/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type':'application/json'
+      },
+      body: JSON.stringify({
+        status: completed ? 'completed' : 'pending'
+      })
+    });
+
+    if(!response.ok)
+      throw new Error();
+
+    setStoredActivity(id, task.activity);
+
+  } catch(err) {
+
+    console.error(err);
+
+    task.completed = !completed;
+    task.activity.pop();
+
+    render();
+
+    alert("Failed to update task.");
+  }
 }
 
 async function handleToggleImportant(id) {
@@ -320,6 +350,40 @@ async function handleToggleImportant(id) {
     }
   }
 }
+
+function handleDeleteRequested(id) {
+  if (!state.user) return;
+  if (!confirm('Are you sure you want to delete this task?')) return;
+
+  authFetch(`/tasks/${id}`, {
+    method: 'DELETE'
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to delete task: ${response.status}`);
+      }
+
+      state.tasks = state.tasks.filter(t => t.id !== id);
+
+      if (state.selectedTaskId === id) {
+        state.selectedTaskId = null;
+      }
+
+      removeStoredActivity(id);
+
+      render();
+    })
+    .catch(error => {
+      console.error('Error deleting task:', error);
+      alert('Failed to delete task. Please try again.');
+    });
+}
+
+function handleTaskUnselected() {
+  state.selectedTaskId = null;
+  render();
+}
+
 
 function handleNewTask() {
   newTaskDialog.showModal();
@@ -397,15 +461,22 @@ async function handleSubmitNewTask(e) {
       listId = lists[0].id;
     }
 
+    // Validate that we have a valid listId
+    if (!listId || typeof listId !== 'number' || isNaN(listId)) {
+      throw new Error('Invalid list ID. Please try again or create a list first.');
+    }
+
     // Prepare task data for API
-    const dueDateForAPI = dueDate || null;
+    // Convert empty string dates to null since the backend expects null or a valid date string
+    const dueDateForAPI = dueDate && dueDate.trim() !== '' ? dueDate : null;
 
     const taskData = {
       title: title,
       description: description,
       priority: priority, // already lowercase, matches enum
       status: 'pending', // default status
-      due_date: dueDateForAPI // Convert to ISO string in UTC to avoid timezone issues
+      due_date: dueDateForAPI, // Convert to ISO string in UTC to avoid timezone issues
+      list_id: listId // Assign task to the selected list
     };
 
     const createTaskResponse = await authFetch(`/users/${state.user.id}/tasks/`, {
@@ -417,7 +488,20 @@ async function handleSubmitNewTask(e) {
     });
 
     if (!createTaskResponse.ok) {
-      throw new Error(`Failed to create task: ${createTaskResponse.status}`);
+      // Try to get detailed error information from the server
+      let errorMessage = `Failed to create task: ${createTaskResponse.status}`;
+      try {
+        const errorData = await createTaskResponse.json();
+        if (errorData.detail) {
+          errorMessage += `: ${errorData.detail}`;
+        } else if (errorData.message) {
+          errorMessage += `: ${errorData.message}`;
+        }
+      } catch (e) {
+        // If we can't parse JSON, fall back to status text
+        errorMessage += ` - ${createTaskResponse.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     let createdTask = await createTaskResponse.json();
@@ -475,7 +559,7 @@ async function handleSubmitNewTask(e) {
       id: createdTask.id,
       title: createdTask.title,
       description: createdTask.description || '',
-      dueDate: createdTask.due_date ? new Date(createdTask.due_date).toISOString().slice(0, 10) : null,
+      dueDate: createdTask.due_date,
       tags: createdTask.tags || [], // Extract tags from API response
       priority: createdTask.priority,
       listId: String(createdTask.list_id), // Convert to string for consistency
@@ -619,7 +703,7 @@ function init() {
               id: task.id,
               title: task.title,
               description: task.description || '',
-              dueDate: task.due_date ? new Date(task.due_date).toISOString().slice(0, 10) : null,
+              dueDate: task.due_date,
               tags: task.tags || [],
               priority: task.priority,
               listId: String(task.list_id),
@@ -683,33 +767,44 @@ function render() {
     onNewTask: handleNewTask
   });
 
+  const selectedTask = state.selectedTaskId ? state.tasks.find(t => t.id === state.selectedTaskId) : null;
+  const taskForDetails = selectedTask
+    ? { ...selectedTask, isEditing: selectedTask.id === state.editingTaskId }
+    : null;
+
   renderDetails(detailsEl, {
-    task: state.selectedTaskId ? state.tasks.find(t => t.id === state.selectedTaskId) : null,
-    onEditRequested: (taskId) => {
-      state.editingTaskId = taskId;
-      // The details component will handle switching to edit mode internally
-    },
-    onEditCancelled: () => {
-      state.editingTaskId = null;
-      // The details component will handle switching back to view mode
-    },
-    onDescriptionUpdated: (event) => {
-      // Handle description update from details component
-      const { taskId, description, updatedTask } = event.detail;
-      // Update task in state
-      const taskIndex = state.tasks.findIndex(t => t.id === taskId);
-      if (taskIndex !== -1) {
-        state.tasks[taskIndex] = {
-          ...state.tasks[taskIndex],
-          description: description
-        };
-        // Persist activity update? The details component handles activity updates via its own events
-      }
-      // Clear editing state
-      state.editingTaskId = null;
-      // Re-render to show updated task
-      render();
-    }
+    task: taskForDetails,
+    onEditRequested: ({ taskId }) => {
+  state.editingTaskId = taskId;
+  render();
+},
+
+onEditCancelled: () => {
+  state.editingTaskId = null;
+  render();
+},
+
+onDescriptionUpdated: ({ taskId, description, updatedTask }) => {
+  const taskIndex = state.tasks.findIndex(t => t.id === taskId);
+
+  if (taskIndex !== -1) {
+    state.tasks[taskIndex] = {
+      ...state.tasks[taskIndex],
+      ...updatedTask,
+      description
+    };
+  }
+
+  state.editingTaskId = null;
+  render();
+},
+    onToggleRequested: ({ taskId }) => {
+  handleTaskToggle(taskId);
+},
+    onDeleteRequested: (taskId) => {
+    handleDeleteRequested(taskId);
+},
+    onTaskUnselected: handleTaskUnselected
   });
 }
 

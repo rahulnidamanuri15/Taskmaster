@@ -68,7 +68,11 @@ function defaultState() {
 }
 
 function selectedState(task) {
-  const priorityLabel = task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
+  // Handle case where task.priority might be falsy
+  const priorityValue = task.priority || 'none';
+  const priorityLabel = priorityValue.charAt(0).toUpperCase() + priorityValue.slice(1);
+  const priorityColor = PRIORITY_COLOR[priorityValue] || '#ccc'; // Default to gray if priority not found
+
   return `
     <header class="flex items-center justify-between px-6 pt-4 pb-2 border-b">
       <div class="flex items-center gap-2">
@@ -86,18 +90,18 @@ function selectedState(task) {
     </header>
     <article class="max-w-2xl mx-auto">
       <!-- Title -->
-      <div class=" border-b">
+      <div class="border-b">
       <header class="mb-6 mt-5">
         <h2 class="font-display text-4xl font-semibold leading-tight">${task.title}</h2>
       </header>
 
       <!-- Meta grid: priority, due date -->
-      <dl class="grid grid-cols-2 gap-x-6 gap-y-4 mb-8 ">
+      <dl class="grid grid-cols-2 gap-x-6 gap-y-4 mb-8">
         <div>
           <dt class="text-xs uppercase tracking-widest text-muted mb-1">Priority</dt>
           <dd class="flex items-center gap-2 text-sm">
             <span class="priority-dot"
-                  style="background-color: ${PRIORITY_COLOR[task.priority]}"></span>
+                  style="background-color: ${priorityColor}"></span>
             ${priorityLabel}
           </dd>
         </div>
@@ -118,7 +122,7 @@ function selectedState(task) {
           </div>
           <textarea class="description-edit textarea w-full min-h-[3rem] text-sm leading-relaxed text-ink border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ink/30 ${!task.isEditing ? 'hidden' : ''}"
                     placeholder="Add a description...">${task.description || ''}</textarea>
-          <button class="description-btn mt-2 px-4 py-1 bg-ink text-white text-sm font-medium text-sm font-medium rounded hover:bg-ink/85 transition-colors duration-200 ${!task.isEditing ? 'hidden' : ''}"
+          <button class="description-btn mt-2 px-4 py-1 bg-ink text-white text-sm font-medium rounded hover:bg-ink/85 transition-colors duration-200 ${!task.isEditing ? 'hidden' : ''}"
                   id="save-description-btn">
             Save
           </button>
@@ -129,7 +133,7 @@ function selectedState(task) {
         </div>
       </section>
       <!-- Tags Section -->
-            <div class="mt-5 pb-4 mb-6  border-b ">
+            <div class="mt-5 pb-4 mb-6 border-b">
               <h4 class="text-xs uppercase tracking-widest text-muted mb-3">Tags</h4>
               <div class="tag-container">
                 ${task.tags && task.tags.length > 0 ? `
@@ -166,7 +170,7 @@ function selectedState(task) {
   `;
 }
 
-export function renderDetails(root, { task }) {
+export function renderDetails(root, { task, onEditRequested, onEditCancelled, onDescriptionUpdated, onToggleRequested, onDeleteRequested, onTaskUnselected }) {
   root.innerHTML = task ? selectedState(task) : defaultState();
 
   // If we have a task and it's in editing mode, set up event listeners
@@ -202,23 +206,21 @@ export function renderDetails(root, { task }) {
 
         const updatedTask = await response.json();
 
-        // Find the task in state and update it
-        // We need to trigger a custom event that app.js can listen for
-        const updateEvent = new CustomEvent('taskDescriptionUpdated', {
-          detail: {
+        // Call the provided callback to update the task description
+        if (onDescriptionUpdated) {
+          onDescriptionUpdated({
             taskId: task.id,
             description: newDescription,
             updatedTask: {
               ...updatedTask,
               description: updatedTask.description || '',
-              dueDate: updatedTask.due_date ? new Date(updatedTask.due_date).toISOString().slice(0, 10) : null,
+              dueDate: updatedTask.due_date,
               priority: updatedTask.priority,
               listId: String(updatedTask.list_id),
               completed: updatedTask.status === 'completed'
             }
-          }
-        });
-        root.dispatchEvent(updateEvent);
+          });
+        }
       } catch (error) {
         console.error('Error updating description:', error);
         alert('Failed to update description. Please try again.');
@@ -227,11 +229,10 @@ export function renderDetails(root, { task }) {
 
     // Cancel button handler
     cancelBtn.addEventListener('click', () => {
-      // Trigger event to cancel editing
-      const cancelEvent = new CustomEvent('taskEditCancelled', {
-        detail: { taskId: task.id }
-      });
-      root.dispatchEvent(cancelEvent);
+      // Call the provided callback to cancel editing
+      if (onEditCancelled) {
+        onEditCancelled({ taskId: task.id });
+      }
     });
 
     // Handle Enter key (shift+enter for newline, enter alone to submit)
@@ -257,18 +258,22 @@ export function renderDetails(root, { task }) {
     descContainer.title = 'Click to edit description';
 
     descContainer.addEventListener('click', () => {
-      const editEvent = new CustomEvent('taskEditRequested', {
-        detail: { taskId: task.id }
-      });
-      root.dispatchEvent(editEvent);
+      // Call the provided callback to request edit
+      if (onEditRequested) {
+        onEditRequested({ taskId: task.id });
+      }
     });
+  }
 
-    // Checkbox toggle for completion
+  // Checkbox toggle for completion (should work in both editing and non-editing states)
+  if (task) {
     const checkbox = root.querySelector('#complete-checkbox');
     if (checkbox) {
       checkbox.addEventListener('change', () => {
-        const toggleEvent = new CustomEvent('taskToggleRequested', { detail: { taskId: task.id } });
-        root.dispatchEvent(toggleEvent);
+        // Call the provided callback to toggle task completion
+        if (onToggleRequested) {
+          onToggleRequested({ taskId: task.id });
+        }
       });
     }
   }
@@ -276,35 +281,23 @@ export function renderDetails(root, { task }) {
   // Delete button handler
   const deleteBtn = root.querySelector('#delete-btn');
   if (deleteBtn) {
-    deleteBtn.addEventListener('click', async () => {
-      if (!task) return;
-      if (!confirm('Are you sure you want to delete this task?')) return;
-      try {
-        const response = await fetch(`/tasks/${task.id}`, {
-          method: 'DELETE',
-          credentials: 'include'
-        });
-        if (!response.ok) {
-          throw new Error(`Failed to delete task: ${response.status}`);
-        }
-        // Notify app to remove task
-        const deleteEvent = new CustomEvent('taskDeleteRequested', {
-          detail: { taskId: task.id }
-        });
-        root.dispatchEvent(deleteEvent);
-      } catch (error) {
-        console.error('Error deleting task:', error);
-        alert('Failed to delete task. Please try again.');
-      }
-    });
+    deleteBtn.addEventListener('click', () => {
+    if (!task) return;
+
+    if (onDeleteRequested) {
+        onDeleteRequested(task.id);
+    }
+});
   }
 
   // Close button handler (returns to empty state)
   const closeBtn = root.querySelector('#close-btn');
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
-      const unselectEvent = new CustomEvent('taskUnselected', {});
-      root.dispatchEvent(unselectEvent);
+      // Call the provided callback to unselect task
+      if (onTaskUnselected) {
+        onTaskUnselected();
+      }
     });
   }
 }

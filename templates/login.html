@@ -300,11 +300,13 @@
         }
 
         // Reset button state
+        const submitButton = document.getElementById('login-button');
         submitButton.innerHTML = originalText;
         submitButton.disabled = false;
       })
       .finally(() => {
         // Ensure button is reset
+        const submitButton = document.getElementById('login-button');
         submitButton.innerHTML = originalText;
         submitButton.disabled = false;
       });

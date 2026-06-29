@@ -178,3 +178,24 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
     remember_me: bool = False
+
+
+# Password reset schemas
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyCodeRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=8)
+    confirm_new_password: str = Field(..., min_length=8)
+
+
+class PasswordResetTokenResponse(BaseModel):
+    message: str

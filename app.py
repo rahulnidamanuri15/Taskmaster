@@ -14,13 +14,16 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uvicorn
-from datetime import timedelta
+from datetime import datetime, timedelta
+import secrets
+import bcrypt
 
 import models
 import schemas
 import crud
 import auth
 import database
+from utils.email import send_verification_email
 
 # Create database tables
 models.Base.metadata.create_all(bind=database.engine)
@@ -157,6 +160,224 @@ def logout(request: Request, response: Response):
     response.delete_cookie(key="access_token", path="/")
     response.delete_cookie(key="refresh_token", path="/")
     return response
+
+
+# Password reset endpoints
+@app.post("/api/v1/auth/forgot-password", response_model=schemas.PasswordResetTokenResponse)
+async def forgot_password(
+    request: schemas.ForgotPasswordRequest,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+    """
+    Handle forgot password request - sends verification code to email.
+    Always returns the same message to prevent email enumeration.
+    """
+    print(f"DEBUG: forgot_password function called with email: {request.email}")  # Debug line
+
+    # Always return the same message to prevent email enumeration
+    message = "If an account exists, a verification code has been sent."
+
+    # Check if user exists (but don't reveal this)
+    print(f"DEBUG: Checking for user with email: {request.email}")  # Debug line
+    user = crud.get_user_by_email(db, request.email)
+    print(f"DEBUG: User found: {user is not None}")  # Debug line
+
+    if user:
+        # Generate 6-digit cryptographically secure random code
+        code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
+        print(f"DEBUG: Generated code: {code}")  # Debug line
+
+        # Hash the code using bcrypt (same as password hashing)
+        # bcrypt expects bytes, so we encode the string
+        hashed_code = bcrypt.hashpw(code.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        print(f"DEBUG: Hashed code: {hashed_code}")  # Debug line
+
+        # Set expiration to 10 minutes from now
+        expires_at = datetime.utcnow() + timedelta(minutes=10)
+        print(f"DEBUG: Expires at: {expires_at}")  # Debug line
+
+        # Create password reset token record
+        print(f"DEBUG: Creating password reset token for user {user.id}")  # Debug line
+        crud.create_password_reset_token(
+            db=db,
+            email=request.email,
+            user_id=user.id,
+            otp_hash=hashed_code,
+            expires_at=expires_at
+        )
+        print(f"DEBUG: Password reset token created")  # Debug line
+
+        # Send email with verification code
+        print(f"DEBUG: Sending verification email to {request.email}")  # Debug line
+        email_sent = send_verification_email(request.email, code)
+        print(f"DEBUG: Email sent result: {email_sent}")  # Debug line
+        if not email_sent:
+            # Log the error but don't fail the request for security reasons
+            # In production, you might want to use a proper logging framework
+            print(f"Warning: Failed to send verification email to {request.email}")
+
+    # Always return the same message regardless of whether email exists
+    return {"message": message}
+
+
+@app.post("/api/v1/auth/verify-reset-code")
+async def verify_reset_code(
+    request: schemas.VerifyCodeRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Verify the reset code sent to user's email.
+    """
+    # Validate email format (Pydantic already does this, but double-check)
+    # Validate code is exactly 6 digits
+    if not request.code.isdigit() or len(request.code) != 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid verification code format"
+        )
+
+    # Find the token by email (we'll verify the code separately)
+    token = db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.email == request.email,
+        models.PasswordResetToken.is_used == 0
+    ).first()
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification code"
+        )
+
+    # Check if token has expired
+    if token.expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code has expired"
+        )
+
+    # Check if token has already been used
+    if token.is_used:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code has already been used"
+        )
+
+    # Check if too many attempts
+    if token.attempts >= 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Too many incorrect attempts. Please request a new verification code."
+        )
+
+    # Verify the code using bcrypt.checkpw (similar to password verification)
+    if not bcrypt.checkpw(request.code.encode('utf-8'), token.otp_hash.encode('utf-8')):
+        # Increment attempt counter for failed attempt
+        crud.increment_password_reset_attempts(db, token.id)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification code"
+        )
+
+    # If we get here, the code is valid
+    return {"verified": True}
+
+
+@app.post("/api/v1/auth/reset-password")
+async def reset_password(
+    request: schemas.ResetPasswordRequest,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+    """
+    Reset password using verification code.
+    """
+    # Validate passwords match
+    if request.new_password != request.confirm_new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match"
+        )
+
+    # Validate password strength (Pydantic already checks min length 8)
+    # Additional validation could be added here if needed
+
+    # Find the token by email (we'll verify the code separately)
+    token = db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.email == request.email,
+        models.PasswordResetToken.is_used == 0
+    ).first()
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification code"
+        )
+
+    # Check if token has expired
+    if token.expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code has expired"
+        )
+
+    # Check if token has already been used
+    if token.is_used:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code has already been used"
+        )
+
+    # Check if too many attempts
+    if token.attempts >= 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Too many incorrect attempts. Please request a new verification code."
+        )
+
+    # Verify the code using bcrypt.checkpw (similar to password verification)
+    if not bcrypt.checkpw(request.code.encode('utf-8'), token.otp_hash.encode('utf-8')):
+        # Increment attempt counter for failed attempt
+        crud.increment_password_reset_attempts(db, token.id)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification code"
+        )
+
+    # If we get here, the code is valid - proceed with password reset
+
+    # Get the user
+    user = crud.get_user(db, token.user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Hash the new password
+    hashed_password = auth.get_password_hash(request.new_password)
+
+    # Update user's password
+    user.password_hash = hashed_password
+    user.updated_at = datetime.utcnow()
+
+    # Mark the token as used
+    crud.mark_password_reset_token_as_used(db, token.id)
+
+    # Invalidate any other reset tokens for this user (security measure)
+    db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.user_id == user.id,
+        models.PasswordResetToken.id != token.id
+    ).update({"is_used": 1})
+
+    # Invalidate all active sessions by updating a token version or similar
+    # For simplicity, we'll just update the user's updated_at timestamp
+    # In a production app, you might want to implement a token versioning system
+    # or maintain a list of invalidated tokens
+
+    db.commit()
+
+    return {"message": "Password updated successfully. Please log in with your new password."}
 
 
 # User endpoints
@@ -321,12 +542,15 @@ def read_tags_for_user(
     return tags
 
 
-@app.get("/tags/{tag_id}", response_model=schemas.Tag)
-def read_tag(tag_id: int, db: Session = Depends(get_db)):
+@app.delete("/tags/{tag_id}", response_model=schemas.Tag)
+def delete_tag(tag_id: int, db: Session = Depends(get_db), current_user: schemas.User = Depends(auth.get_current_user)):
+    # Verify tag exists and belongs to current user
     db_tag = crud.get_tag(db, tag_id=tag_id)
     if db_tag is None:
         raise HTTPException(status_code=404, detail="Tag not found")
-    return db_tag
+    if db_tag.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this tag")
+    return crud.delete_tag(db=db, tag_id=tag_id)
 
 
 # Task-tag endpoints
@@ -413,6 +637,32 @@ async def app_index(request: Request):
     )
 
 
+# Password reset pages
+@app.get("/forgot-password.html", response_class=HTMLResponse)
+async def forgot_password_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="forgot-password.html"
+    )
+
+
+@app.get("/verify-code.html", response_class=HTMLResponse)
+async def verify_code_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="verify-code.html"
+    )
+
+
+@app.get("/reset-password.html", response_class=HTMLResponse)
+async def reset_password_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="reset-password.html"
+    )
+
+
 # Mount the static frontend at /. html=True lets StaticFiles resolve "/" to
+# index.html"># Mount the static frontend at /. html=True lets StaticFiles resolve "/" to
 # index.html automatically, so we get a clean SPA-style entry point.
 app.mount("/static", StaticFiles(directory="static"), name="static")
