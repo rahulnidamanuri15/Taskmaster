@@ -638,7 +638,7 @@ async def app_index(request: Request):
 
 
 # Password reset pages
-@app.get("/forgot-password.html", response_class=HTMLResponse)
+@app.get("/forgot-password", response_class=HTMLResponse)
 async def forgot_password_page(request: Request):
     return templates.TemplateResponse(
         request=request,
@@ -646,7 +646,7 @@ async def forgot_password_page(request: Request):
     )
 
 
-@app.get("/verify-code.html", response_class=HTMLResponse)
+@app.get("/verify-code", response_class=HTMLResponse)
 async def verify_code_page(request: Request):
     return templates.TemplateResponse(
         request=request,
@@ -654,7 +654,7 @@ async def verify_code_page(request: Request):
     )
 
 
-@app.get("/reset-password.html", response_class=HTMLResponse)
+@app.get("/reset-password", response_class=HTMLResponse)
 async def reset_password_page(request: Request):
     return templates.TemplateResponse(
         request=request,
