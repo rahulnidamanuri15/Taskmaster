@@ -41,6 +41,9 @@
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
 <body class="bg-beige font-sans text-ink antialiased min-h-screen">
+  <!-- Toast Container -->
+  <div id="toast-container" aria-live="polite" aria-atomic="true" class="fixed z-50 pointer-events-none"></div>
+
   <!-- Desktop: 3-column grid. Below lg: stacks vertically. -->
   <div class="lg:grid lg:grid-cols-[20%_35%_45%] lg:h-screen">
 
@@ -162,6 +165,7 @@
     </form>
   </dialog>
 
+  <script type="module" src="/static/js/toast.js"></script>
   <script type="module" src="/static/js/app.js"></script>
 </body>
 </html>

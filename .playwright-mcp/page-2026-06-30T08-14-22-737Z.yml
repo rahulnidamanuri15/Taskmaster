@@ -1,0 +1,68 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading "TASKMASTER" [level=1] [ref=e3]:
+      - generic [ref=e4]: TASKMASTER
+    - generic [ref=e5]:
+      - heading "The discipline of getting things done." [level=1] [ref=e6]:
+        - generic [ref=e7]: The discipline of getting
+        - generic [ref=e8]: things done.
+      - paragraph [ref=e9]: Taskmaster helps professionals manage their work with clarity and focus. Built for serious work, without the noise.
+      - generic [ref=e10]:
+        - link "Start for free" [ref=e11] [cursor=pointer]:
+          - /url: /register
+        - link "Sign in to your account" [ref=e12] [cursor=pointer]:
+          - /url: /login
+  - generic [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]: WHY TASKMASTER
+      - heading "Built for serious work" [level=2] [ref=e17]
+    - generic [ref=e18]:
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e23]: "1"
+          - heading "Structured Lists" [level=3] [ref=e24]
+        - paragraph [ref=e25]: Organize your work with nested lists, dependencies, and priorities that reflect how you actually work.
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - generic [ref=e30]: "2"
+          - heading "Rich Task Detail" [level=3] [ref=e31]
+        - paragraph [ref=e32]: Capture every detail with rich text descriptions, file attachments, and custom fields that adapt to your workflow.
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e37]: "3"
+          - heading "Desktop-first" [level=3] [ref=e38]
+        - paragraph [ref=e39]: Experience a native-like desktop application with keyboard shortcuts and powerful search.
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - generic [ref=e44]: "4"
+          - heading "Smart Views" [level=3] [ref=e45]
+        - paragraph [ref=e46]: Save and switch between custom views of your tasks — by project, priority, due date, or any combination.
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - generic [ref=e51]: "5"
+          - heading "Classical Aesthetic" [level=3] [ref=e52]
+        - paragraph [ref=e53]: A timeless interface that respects your focus — beautiful typography, thoughtful spacing, and zero distractions.
+      - generic [ref=e55]:
+        - generic [ref=e56]:
+          - generic [ref=e58]: "6"
+          - heading "No Subscription Lock-in" [level=3] [ref=e59]
+        - paragraph [ref=e60]: Own your data forever. Export anytime, self-host if you choose, and never lose access to your work.
+  - generic [ref=e62]:
+    - heading "Ready to work with clarity?" [level=2] [ref=e63]
+    - paragraph [ref=e64]: Join thousands of professionals who manage their work with Taskmaster.
+    - link "Create your free account →" [ref=e65] [cursor=pointer]:
+      - /url: /register
+  - contentinfo [ref=e66]:
+    - generic [ref=e67]:
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - generic [ref=e70]: TM
+          - generic [ref=e71]: Taskmaster
+        - paragraph [ref=e72]: © 2026 Taskmaster. All rights reserved.
+      - navigation [ref=e74]:
+        - link "Privacy" [ref=e75] [cursor=pointer]:
+          - /url: "#"
+        - link "Terms" [ref=e76] [cursor=pointer]:
+          - /url: "#"
+        - link "Contact" [ref=e77] [cursor=pointer]:
+          - /url: "#"

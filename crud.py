@@ -41,7 +41,7 @@ def create_user(db: Session, user: schemas.UserCreate):
 def update_user(db: Session, user_id: int, user: schemas.UserUpdate):
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if db_user:
-        update_data = user.dict(exclude_unset=True)
+        update_data = user.model_dump(exclude_unset=True)
         if "password" in update_data:
             update_data["password_hash"] = get_password_hash(update_data.pop("password"))
         for key, value in update_data.items():
@@ -69,17 +69,20 @@ def get_lists_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100
 
 
 def create_list(db: Session, list_: schemas.ListCreate, user_id: int):
-    db_list = models.List(**list_.dict(), user_id=user_id)
+    db_list = models.List(
+        **list_.model_dump(),
+        user_id=user_id
+    )
+
     db.add(db_list)
     db.commit()
     db.refresh(db_list)
     return db_list
 
-
 def update_list(db: Session, list_id: int, list_: schemas.ListUpdate):
     db_list = db.query(models.List).filter(models.List.id == list_id).first()
     if db_list:
-        update_data = list_.dict(exclude_unset=True)
+        update_data = list_.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_list, key, value)
         db.commit()
@@ -124,7 +127,7 @@ def get_tasks_by_user(
 
 
 def create_task(db: Session, task: schemas.TaskCreate, user_id: int):
-    db_task = models.Task(**task.dict(), user_id=user_id)
+    db_task = models.Task(**task.model_dump(),user_id=user_id)
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
@@ -134,7 +137,7 @@ def create_task(db: Session, task: schemas.TaskCreate, user_id: int):
 def update_task(db: Session, task_id: int, task: schemas.TaskUpdate):
     db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if db_task:
-        update_data = task.dict(exclude_unset=True)
+        update_data = task.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_task, key, value)
         db.commit()
@@ -160,7 +163,7 @@ def get_tags_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100)
 
 
 def create_tag(db: Session, tag: schemas.TagCreate, user_id: int):
-    db_tag = models.Tag(**tag.dict(), user_id=user_id)
+    db_tag = models.Tag(**tag.model_dump(),user_id=user_id)
     db.add(db_tag)
     db.commit()
     db.refresh(db_tag)
@@ -170,7 +173,7 @@ def create_tag(db: Session, tag: schemas.TagCreate, user_id: int):
 def update_tag(db: Session, tag_id: int, tag: schemas.TagUpdate):
     db_tag = db.query(models.Tag).filter(models.Tag.id == tag_id).first()
     if db_tag:
-        update_data = tag.dict(exclude_unset=True)
+        update_data = tag.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_tag, key, value)
         db.commit()

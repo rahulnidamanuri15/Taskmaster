@@ -2,6 +2,7 @@
 // task view.
 
 import { PRIORITY_COLOR } from './sidebar.js';
+import toastService from './toast.js';
 
 // Inline SVG icons
 const ICON_DELETE = `
@@ -220,10 +221,16 @@ export function renderDetails(root, { task, onEditRequested, onEditCancelled, on
               completed: updatedTask.status === 'completed'
             }
           });
+
+          // Show success toast
+          toastService.success('Description updated successfully');
         }
       } catch (error) {
         console.error('Error updating description:', error);
         alert('Failed to update description. Please try again.');
+
+        // Show error toast
+        toastService.error('Failed to update description. Please try again');
       }
     });
 

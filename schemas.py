@@ -1,7 +1,7 @@
 """
 Pydantic schemas for TaskMaster entities.
 """
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator,ConfigDict
 from typing import Optional, List as ListType
 from datetime import datetime, date
 import models
@@ -31,8 +31,7 @@ class UserInDBBase(UserBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserInDB(UserInDBBase):
@@ -66,8 +65,7 @@ class ListInDBBase(ListBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ListInDB(ListInDBBase):
@@ -87,6 +85,13 @@ class TaskBase(BaseModel):
     due_date: Optional[date] = None
     is_important: bool = False
 
+    @field_validator("due_date")
+    @classmethod
+    def due_date_not_in_past(cls, v):
+        if v is not None and v < date.today():
+            raise ValueError('Due date cannot be in the past')
+        return v
+
 
 class TaskCreate(TaskBase):
     list_id: int
@@ -102,6 +107,13 @@ class TaskUpdate(BaseModel):
     list_id: Optional[int] = None
     is_important: Optional[bool] = None
 
+    @field_validator("due_date")
+    @classmethod
+    def due_date_not_in_past(cls, v):
+        if v is not None and v < date.today():
+            raise ValueError('Due date cannot be in the past')
+        return v
+
 
 class TaskInDBBase(TaskBase):
     id: int
@@ -112,8 +124,7 @@ class TaskInDBBase(TaskBase):
     updated_at: Optional[datetime] = None
     is_important: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskInDB(TaskInDBBase):
@@ -123,15 +134,13 @@ class TaskInDB(TaskInDBBase):
 class Task(TaskInDBBase):
     tags: ListType["Tag"] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskDetail(TaskInDBBase):
     tags: ListType["Tag"] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Tag schemas
@@ -152,8 +161,7 @@ class TagInDBBase(TagBase):
     user_id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TagInDB(TagInDBBase):

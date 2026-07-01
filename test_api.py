@@ -19,6 +19,27 @@ import schemas
 # Create test client
 client = TestClient(app.app)
 
+def create_test_user():
+    unique_id = uuid.uuid4().hex[:8]
+
+    user_data = {
+        "full_name": "API Test User",
+        "email": f"apitest_{unique_id}@example.com",
+        "password": "password123",
+        "confirm_password": "password123",
+    }
+
+    response = client.post("/api/v1/auth/register", json=user_data)
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    return data["id"], data["email"]
+
+def test_create_user():
+    create_test_user()
+
 def test_create_user():
     """Test creating a user via API."""
     unique_id = uuid.uuid4().hex[:8]
@@ -38,7 +59,6 @@ def test_create_user():
     assert data["full_name"] == user_data["full_name"]
     assert data["email"] == user_data["email"]
     assert "id" in data
-    return data["id"], data["email"]
 
 def test_get_users():
     """Test getting users via API."""
@@ -49,9 +69,8 @@ def test_get_users():
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    return data
 
-def test_login(email: str):
+def _test_login(email: str):
     """Test login endpoint."""
     login_data = {
         "email": email,
@@ -70,14 +89,23 @@ def test_login(email: str):
     return data["access_token"]
 
 
+def test_login_endpoint():
+    _, email = create_test_user()
+
+    token = _test_login(email)
+
+    assert token is not None
+    assert len(token) > 0
+
+
 def test_delete_task():
     """Test deleting a task via API."""
     # Create a user
-    user_id, email = test_create_user()
+    user_id, email = create_test_user()
     print(f"Created user with ID: {user_id} and email: {email}")
 
     # Login to get token
-    token = test_login(email)
+    token = _test_login(email)
     headers = {"Authorization": f"Bearer {token}"}
 
     # Create a list for the user
@@ -129,7 +157,7 @@ if __name__ == "__main__":
     print("Testing API endpoints...")
 
     # Test creating a user
-    user_id, email = test_create_user()
+    user_id, email = create_test_user()
     print(f"Created user with ID: {user_id} and email: {email}")
 
     # Test getting users
@@ -137,7 +165,7 @@ if __name__ == "__main__":
     print(f"Retrieved {len(users)} users")
 
     # Test login
-    token = test_login(email)
+    token = _test_login(email)
     print(f"Received token: {token[:10]}...")
 
     # Test deleting a task

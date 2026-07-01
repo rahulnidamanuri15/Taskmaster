@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uvicorn
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import secrets
 import bcrypt
 
@@ -24,6 +24,7 @@ import crud
 import auth
 import database
 from utils.email import send_verification_email
+from jose import jwt, JWTError
 
 # Create database tables
 models.Base.metadata.create_all(bind=database.engine)
@@ -139,7 +140,8 @@ async def refresh_token(request: Request, response: Response, db: Session = Depe
     new_access_token = auth.create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
-    # Set new access token cookie
+    # Create response and set new access token cookie
+    response = JSONResponse(content={"msg": "Token refreshed"})
     response.set_cookie(
         key="access_token",
         value=new_access_token,
@@ -150,7 +152,7 @@ async def refresh_token(request: Request, response: Response, db: Session = Depe
         secure=False,
         samesite="lax",
     )
-    return JSONResponse(content={"msg": "Token refreshed"})
+    return response
 
 
 @app.post("/api/v1/auth/logout")
@@ -194,7 +196,7 @@ async def forgot_password(
         print(f"DEBUG: Hashed code: {hashed_code}")  # Debug line
 
         # Set expiration to 10 minutes from now
-        expires_at = datetime.utcnow() + timedelta(minutes=10)
+        expires_at = datetime.now(UTC) + timedelta(minutes=10)
         print(f"DEBUG: Expires at: {expires_at}")  # Debug line
 
         # Create password reset token record
@@ -250,7 +252,7 @@ async def verify_reset_code(
         )
 
     # Check if token has expired
-    if token.expires_at < datetime.utcnow():
+    if token.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification code has expired"
@@ -315,7 +317,7 @@ async def reset_password(
         )
 
     # Check if token has expired
-    if token.expires_at < datetime.utcnow():
+    if token.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification code has expired"
@@ -359,7 +361,7 @@ async def reset_password(
 
     # Update user's password
     user.password_hash = hashed_password
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(UTC)
 
     # Mark the token as used
     crud.mark_password_reset_token_as_used(db, token.id)

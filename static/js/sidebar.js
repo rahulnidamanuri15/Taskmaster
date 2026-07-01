@@ -107,9 +107,9 @@ export function renderSidebar(root, { counts, activeView, onNavigate, user, onLo
 
     <!-- Primary nav -->
     <nav aria-label="Smart lists" class="flex flex-col gap-1">
-      ${navItem({ view: 'inbox',     label: 'Inbox',     icon: ICON_INBOX, count: (counts && counts.inbox) !== undefined ? counts.inbox : 0,     active: activeView === 'inbox' })}
-      ${navItem({ view: 'today',     label: 'Today',     icon: ICON_TODAY, count: (counts && counts.today) !== undefined ? counts.today : 0,     active: activeView === 'today' })}
-      ${navItem({ view: 'important', label: 'Important', icon: ICON_STAR,  count: (counts && counts.important) !== undefined ? counts.important : 0, active: activeView === 'important' })}
+      ${navItem({ view: 'inbox', label: 'Inbox', icon: ICON_INBOX, count: (counts && counts.inbox) !== undefined ? counts.inbox : 0, active: activeView === 'inbox' })}
+      ${navItem({ view: 'today', label: 'Today', icon: ICON_TODAY, count: (counts && counts.today) !== undefined ? counts.today : 0, active: activeView === 'today' })}
+      ${navItem({ view: 'important', label: 'Important', icon: ICON_STAR, count: (counts && counts.important) !== undefined ? counts.important : 0, active: activeView === 'important' })}
     </nav>
 
     <!-- Priority-based filter sections -->
@@ -198,8 +198,10 @@ export function renderSidebar(root, { counts, activeView, onNavigate, user, onLo
 
   // Wire nav clicks. We delegate via the parent so listeners stay correct
   // after future re-renders.
-  root.querySelectorAll('.nav-item').forEach(btn => {
-    btn.addEventListener('click', () => onNavigate(btn.dataset.view));
+  root.querySelectorAll('.nav-item[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      onNavigate(btn.dataset.view);
+    });
   });
 
   // Wire profile/login/logout buttons

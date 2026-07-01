@@ -4,6 +4,11 @@ import { renderSidebar } from './sidebar.js';
 import { renderTaskList } from './tasks.js';
 import { renderDetails } from './details.js';
 import { PRIORITY_COLOR } from './sidebar.js';
+// Import toast service
+import toastService from './toast.js';
+
+// // Create toast service instance
+// const toastService = new ToastService();
 
 // Authenticated fetch with automatic refresh token handling
 async function authFetch(input, init = {}) {
@@ -48,7 +53,7 @@ function setStoredActivity(taskId, activityArray) {
 function removeStoredActivity(taskId) {
   try {
     localStorage.removeItem(ACTIVITY_STORAGE_PREFIX + taskId);
-  } catch (e) {}
+  } catch (e) { }
 }
 
 // Application state
@@ -257,7 +262,7 @@ async function handleTaskToggle(id) {
     task.activity = [];
 
   task.activity.push({
-    at: new Date().toISOString().slice(0,16).replace('T',' '),
+    at: new Date().toISOString().slice(0, 16).replace('T', ' '),
     text: completed
       ? 'You completed this task'
       : 'You marked this task as incomplete'
@@ -269,19 +274,22 @@ async function handleTaskToggle(id) {
     const response = await authFetch(`/tasks/${id}`, {
       method: 'PATCH',
       headers: {
-        'Content-Type':'application/json'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         status: completed ? 'completed' : 'pending'
       })
     });
 
-    if(!response.ok)
+    if (!response.ok)
       throw new Error();
 
     setStoredActivity(id, task.activity);
 
-  } catch(err) {
+    // Show success toast
+    toastService.success(completed ? 'Task marked as completed' : 'Task marked as incomplete');
+
+  } catch (err) {
 
     console.error(err);
 
@@ -291,6 +299,9 @@ async function handleTaskToggle(id) {
     render();
 
     alert("Failed to update task.");
+
+    // Show error toast
+    toastService.error("Failed to update task");
   }
 }
 
@@ -330,6 +341,8 @@ async function handleToggleImportant(id) {
       }
       // Persist activity on success
       setStoredActivity(id, task.activity);
+      // Show success toast
+      toastService.success(newImportant ? 'Task marked as important' : 'Task removed from important');
       // Optionally, we could update the task with the server's response, but we are optimistic
     } catch (error) {
       console.error('Error updating task importance:', error);
@@ -347,11 +360,14 @@ async function handleToggleImportant(id) {
       // Persist after rollback
       setStoredActivity(id, task.activity);
       render();
+
+      // Show error toast
+      toastService.error('Failed to update importance');
     }
   }
 }
 
-function handleDeleteRequested(id) {
+async function handleDeleteRequested(id) {
   if (!state.user) return;
   if (!confirm('Are you sure you want to delete this task?')) return;
 
@@ -372,10 +388,16 @@ function handleDeleteRequested(id) {
       removeStoredActivity(id);
 
       render();
+
+      // Show success toast
+      toastService.success('Task deleted successfully');
     })
     .catch(error => {
       console.error('Error deleting task:', error);
       alert('Failed to delete task. Please try again.');
+
+      // Show error toast
+      toastService.error('Failed to delete task. Please try again.');
     });
 }
 
@@ -507,51 +529,58 @@ async function handleSubmitNewTask(e) {
     let createdTask = await createTaskResponse.json();
 
     // Handle tags if any were provided
+    let tagsAdded = 0;
     if (tags && tags.length > 0) {
-        for (const tagName of tags) {
-            try {
-                const tagsResponse = await authFetch(`/users/${state.user.id}/tags/`);
+      for (const tagName of tags) {
+        try {
+          const tagsResponse = await authFetch(`/users/${state.user.id}/tags/`);
 
-                if (tagsResponse.ok) {
-                    const existingTags = await tagsResponse.json();
-                    let tag = existingTags.find(
-                        t => t.name.toLowerCase() === tagName.toLowerCase()
-                    );
+          if (tagsResponse.ok) {
+            const existingTags = await tagsResponse.json();
+            let tag = existingTags.find(
+              t => t.name.toLowerCase() === tagName.toLowerCase()
+            );
 
-                    if (!tag) {
-                        const createTagResponse = await authFetch(
-                            `/users/${state.user.id}/tags/`,
-                            {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ name: tagName })
-                            }
-                        );
-
-                        if (createTagResponse.ok) {
-                            tag = await createTagResponse.json();
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    // Attach the tag to the task (whether found or created)
-                    await authFetch(`/tasks/${createdTask.id}/tags/${tag.id}`, {
-                        method: 'POST'
-                    });
+            if (!tag) {
+              const createTagResponse = await authFetch(
+                `/users/${state.user.id}/tags/`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ name: tagName })
                 }
-            } catch (tagError) {
-                console.warn(`Error processing tag ${tagName}:`, tagError);
-            }
-        }
+              );
 
-        // Get updated task with tags
-        const updatedTaskResponse = await authFetch(`/tasks/${createdTask.id}`);
-        if (updatedTaskResponse.ok) {
-            createdTask = await updatedTaskResponse.json();
+              if (createTagResponse.ok) {
+                tag = await createTagResponse.json();
+              } else {
+                continue;
+              }
+            }
+
+            // Attach the tag to the task (whether found or created)
+            await authFetch(`/tasks/${createdTask.id}/tags/${tag.id}`, {
+              method: 'POST'
+            });
+            tagsAdded++;
+          }
+        } catch (tagError) {
+          console.warn(`Error processing tag ${tagName}:`, tagError);
         }
+      }
+
+      // Get updated task with tags
+      const updatedTaskResponse = await authFetch(`/tasks/${createdTask.id}`);
+      if (updatedTaskResponse.ok) {
+        createdTask = await updatedTaskResponse.json();
+      }
+
+      // Show toast for tags if any were added
+      if (tagsAdded > 0) {
+        toastService.success(`${tagsAdded} tag${tagsAdded > 1 ? 's' : ''} added successfully`);
+      }
     }
 
     // Convert backend task to frontend task object
@@ -583,9 +612,15 @@ async function handleSubmitNewTask(e) {
 
     // Re-render to show new task
     render();
+
+    // Show success toast
+    toastService.success('Task created successfully');
   } catch (error) {
     console.error('Error creating task:', error);
     alert('Failed to create task. Please try again.');
+
+    // Show error toast
+    toastService.error('Failed to create task. Please try again.');
   }
 }
 
@@ -618,36 +653,21 @@ function handleLogin() {
 }
 
 async function handleLogout() {
+
   try {
     await authFetch('/api/v1/auth/logout', {
       method: 'POST'
     });
-  } catch (error) {
-    console.error('Logout request failed:', error);
-    // Continue to clear state and redirect even if request fails
-  }
 
-  try {
-    // Clear localStorage (just in case)
-    localStorage.removeItem('access_token');
-    // Update state
-    state.user = null;
-    // Redirect to home page
-    window.location.href = '/';
-  } catch (error) {
-    console.error('Logout cleanup failed, attempting redirect anyway:', error);
-    // Even if cleanup fails, try to redirect
-    try {
-      window.location.href = '/';
-    } catch (e) {
-      console.error('Logout redirect failed:', e);
-      // Last resort - try to reload the page which might redirect based on state
-      try {
-        location.reload();
-      } catch (e2) {
-        console.error('Logout reload also failed:', e2);
-      }
-    }
+    toastService.success("Logged out successfully");
+    setTimeout(() => {
+  
+      
+      window.location.href = "/login";
+    }, 1200);
+
+  } catch (err) {
+    console.error(err);
   }
 }
 
@@ -775,35 +795,35 @@ function render() {
   renderDetails(detailsEl, {
     task: taskForDetails,
     onEditRequested: ({ taskId }) => {
-  state.editingTaskId = taskId;
-  render();
-},
+      state.editingTaskId = taskId;
+      render();
+    },
 
-onEditCancelled: () => {
-  state.editingTaskId = null;
-  render();
-},
+    onEditCancelled: () => {
+      state.editingTaskId = null;
+      render();
+    },
 
-onDescriptionUpdated: ({ taskId, description, updatedTask }) => {
-  const taskIndex = state.tasks.findIndex(t => t.id === taskId);
+    onDescriptionUpdated: ({ taskId, description, updatedTask }) => {
+      const taskIndex = state.tasks.findIndex(t => t.id === taskId);
 
-  if (taskIndex !== -1) {
-    state.tasks[taskIndex] = {
-      ...state.tasks[taskIndex],
-      ...updatedTask,
-      description
-    };
-  }
+      if (taskIndex !== -1) {
+        state.tasks[taskIndex] = {
+          ...state.tasks[taskIndex],
+          ...updatedTask,
+          description
+        };
+      }
 
-  state.editingTaskId = null;
-  render();
-},
+      state.editingTaskId = null;
+      render();
+    },
     onToggleRequested: ({ taskId }) => {
-  handleTaskToggle(taskId);
-},
+      handleTaskToggle(taskId);
+    },
     onDeleteRequested: (taskId) => {
-    handleDeleteRequested(taskId);
-},
+      handleDeleteRequested(taskId);
+    },
     onTaskUnselected: handleTaskUnselected
   });
 }

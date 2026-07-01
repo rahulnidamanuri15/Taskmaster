@@ -1,11 +1,8 @@
-#!/usr/bin/env python3
-"""
-Test script specifically for remember_me functionality.
-"""
 import sys
 import os
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import uuid
 
 # Add the current directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -26,10 +23,11 @@ def test_remember_me_functionality():
     """Test that remember_me affects token expiration correctly"""
     print("=== Testing Remember Me Functionality ===")
 
-    # Create a test user
+    # Create a test user with unique email
+    unique_id = uuid.uuid4().hex[:8]
     user_data = {
         "full_name": "Remember Me Test User",
-        "email": "rememberme_test@example.com",
+        "email": f"rememberme_test_{unique_id}@example.com",
         "password": "testpassword123",
         "confirm_password": "testpassword123"
     }
@@ -42,7 +40,7 @@ def test_remember_me_functionality():
     # Test 1: Login WITHOUT remember_me
     print("\n--- Test 1: Login WITHOUT remember_me ---")
     login_data = {
-        "email": "rememberme_test@example.com",
+        "email": user_data["email"],
         "password": "testpassword123",
         "remember_me": False
     }
@@ -80,9 +78,9 @@ def test_remember_me_functionality():
         print("Refresh token payload: {}".format(json.dumps(refresh_payload, indent=2)))
 
         # Check expiration times
-        access_exp = datetime.fromtimestamp(access_payload["exp"])
-        refresh_exp = datetime.fromtimestamp(refresh_payload["exp"])
-        now = datetime.utcnow()
+        access_exp = datetime.fromtimestamp(access_payload["exp"], tz=timezone.utc)
+        refresh_exp = datetime.fromtimestamp(refresh_payload["exp"], tz=timezone.utc)
+        now = datetime.now(timezone.utc)
 
         access_lifetime = access_exp - now
         refresh_lifetime = refresh_exp - now
@@ -110,7 +108,7 @@ def test_remember_me_functionality():
     # Test 2: Login WITH remember_me
     print("\n--- Test 2: Login WITH remember_me ---")
     login_data = {
-        "email": "rememberme_test@example.com",
+        "email": user_data["email"],
         "password": "testpassword123",
         "remember_me": True
     }
@@ -141,9 +139,9 @@ def test_remember_me_functionality():
         print("Refresh token payload: {}".format(json.dumps(refresh_payload, indent=2)))
 
         # Check expiration times
-        access_exp = datetime.fromtimestamp(access_payload["exp"])
-        refresh_exp = datetime.fromtimestamp(refresh_payload["exp"])
-        now = datetime.utcnow()
+        access_exp = datetime.fromtimestamp(access_payload["exp"], tz=timezone.utc)
+        refresh_exp = datetime.fromtimestamp(refresh_payload["exp"], tz=timezone.utc)
+        now = datetime.now(timezone.utc)
 
         access_lifetime = access_exp - now
         refresh_lifetime = refresh_exp - now
@@ -180,12 +178,22 @@ def test_remember_me_functionality():
     # Test 3: Verify token refresh still works
     print("\n--- Test 3: Verify token refresh works ---")
     # Use the cookies from the remember_me login
-    response = client.post("/api/v1/auth/refresh", cookies=cookies)
+    client.cookies.clear()
+    client.cookies.update(cookies)
+    response = client.post("/api/v1/auth/refresh")
+
+    print(f"Refresh response status: {response.status_code}")
+    print(f"Refresh response cookies: {list(response.cookies.keys())}")
+    print(f"Refresh response body: {response.json()}")
     assert response.status_code == 200, f"Token refresh failed: {response.text}"
     print("+ Token refresh successful")
 
     # The refresh endpoint should return a new access token cookie
     new_cookies = response.cookies
+    print(f"New cookies from refresh: {list(new_cookies.keys())}")
+    # Also check for Set-Cookie headers
+    set_cookie_headers = [v for k, v in response.headers.items() if k.lower() == 'set-cookie']
+    print(f"Set-Cookie headers: {set_cookie_headers}")
     assert "access_token" in new_cookies, "New access token cookie not set in refresh response"
     print("+ New access token cookie received from refresh endpoint")
 
