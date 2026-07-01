@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import List, Optional
-import uvicorn
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, UTC
 import secrets
 import bcrypt
@@ -27,6 +27,7 @@ from utils.email import send_verification_email
 from jose import jwt, JWTError
 import logging
 from utils.logging_config import setup_logging
+from utils.exceptions import register_exception_handlers
 
 # Create database tables
 models.Base.metadata.create_all(bind=database.engine)
@@ -35,16 +36,18 @@ setup_logging()
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="TaskMaster")
-
-@app.on_event("startup")
-async def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     logger.info("TaskMaster API started")
 
+    yield
 
-@app.on_event("shutdown")
-async def shutdown():
     logger.info("TaskMaster API stopped")
+
+app = FastAPI(title="TaskMaster",lifespan=lifespan)
+
+register_exception_handlers(app)
+
 
 # Setup templates
 import os
@@ -401,12 +404,14 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
     return crud.create_user(db=db, user=user)
 
+
 @app.get("/health")
 async def health():
     return {
         "status": "healthy",
         "service": "TaskMaster",
         "version": "1.0.0"
+
     }
 
 @app.get("/api/v1/auth/me", response_model=schemas.User)

@@ -17,7 +17,10 @@ from dotenv import load_dotenv
 
 load_dotenv()  # Load environment variables from .env file
 
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here-change-in-production")  # Should be from environment variable
+SECRET_KEY = os.getenv("SECRET_KEY")# Should be from environment variable
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable is not set.")  
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30  # 30 minutes for non-remember-me
 REFRESH_TOKEN_EXPIRE_DAYS = 30  # 30 days for remember-me
