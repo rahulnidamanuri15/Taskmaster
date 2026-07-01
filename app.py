@@ -25,11 +25,26 @@ import auth
 import database
 from utils.email import send_verification_email
 from jose import jwt, JWTError
+import logging
+from utils.logging_config import setup_logging
 
 # Create database tables
 models.Base.metadata.create_all(bind=database.engine)
 
+setup_logging()
+
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="TaskMaster")
+
+@app.on_event("startup")
+async def startup():
+    logger.info("TaskMaster API started")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    logger.info("TaskMaster API stopped")
 
 # Setup templates
 import os
@@ -42,6 +57,8 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
 
 
 # Authentication endpoints
@@ -175,32 +192,27 @@ async def forgot_password(
     Handle forgot password request - sends verification code to email.
     Always returns the same message to prevent email enumeration.
     """
-    print(f"DEBUG: forgot_password function called with email: {request.email}")  # Debug line
 
     # Always return the same message to prevent email enumeration
     message = "If an account exists, a verification code has been sent."
 
     # Check if user exists (but don't reveal this)
-    print(f"DEBUG: Checking for user with email: {request.email}")  # Debug line
+    logger.info("Password reset requested for %s", request.email)  # Debug line
     user = crud.get_user_by_email(db, request.email)
-    print(f"DEBUG: User found: {user is not None}")  # Debug line
+    logger.info("Password reset request processed.") # Debug line
 
     if user:
         # Generate 6-digit cryptographically secure random code
         code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
-        print(f"DEBUG: Generated code: {code}")  # Debug line
 
         # Hash the code using bcrypt (same as password hashing)
         # bcrypt expects bytes, so we encode the string
         hashed_code = bcrypt.hashpw(code.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        print(f"DEBUG: Hashed code: {hashed_code}")  # Debug line
 
         # Set expiration to 10 minutes from now
         expires_at = datetime.now(UTC) + timedelta(minutes=10)
-        print(f"DEBUG: Expires at: {expires_at}")  # Debug line
 
         # Create password reset token record
-        print(f"DEBUG: Creating password reset token for user {user.id}")  # Debug line
         crud.create_password_reset_token(
             db=db,
             email=request.email,
@@ -208,16 +220,13 @@ async def forgot_password(
             otp_hash=hashed_code,
             expires_at=expires_at
         )
-        print(f"DEBUG: Password reset token created")  # Debug line
 
         # Send email with verification code
-        print(f"DEBUG: Sending verification email to {request.email}")  # Debug line
         email_sent = send_verification_email(request.email, code)
-        print(f"DEBUG: Email sent result: {email_sent}")  # Debug line
         if not email_sent:
             # Log the error but don't fail the request for security reasons
             # In production, you might want to use a proper logging framework
-            print(f"Warning: Failed to send verification email to {request.email}")
+            logger.error("Verification email could not be sent to %s",request.email)
 
     # Always return the same message regardless of whether email exists
     return {"message": message}
@@ -392,6 +401,13 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
     return crud.create_user(db=db, user=user)
 
+@app.get("/health")
+async def health():
+    return {
+        "status": "healthy",
+        "service": "TaskMaster",
+        "version": "1.0.0"
+    }
 
 @app.get("/api/v1/auth/me", response_model=schemas.User)
 def read_current_user(current_user: schemas.User = Depends(auth.get_current_user)):
