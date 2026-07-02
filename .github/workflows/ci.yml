@@ -32,4 +32,13 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Tests
-        run: pytest
+        env:
+          user: ${{ secrets.user }}
+          password: ${{ secrets.password }}
+          host: ${{ secrets.host }}
+          port: ${{ secrets.port }}
+          dbname: ${{ secrets.dbname }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+
+        run: |
+          pytest
