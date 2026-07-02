@@ -29,8 +29,6 @@ import logging
 from utils.logging_config import setup_logging
 from utils.exceptions import register_exception_handlers
 
-# Create database tables
-models.Base.metadata.create_all(bind=database.engine)
 
 setup_logging()
 
