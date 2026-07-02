@@ -109,8 +109,8 @@ def get_tasks_by_user(
     user_id: int,
     skip: int = 0,
     limit: int = 100,
-    status: Optional[schemas.StatusEnum] = None,
-    priority: Optional[schemas.PriorityEnum] = None,
+    status: Optional[models.StatusEnum] = None,
+    priority: Optional[models.PriorityEnum] = None,
     list_id: Optional[int] = None
 ):
     from sqlalchemy.orm import joinedload
