@@ -1,7 +1,7 @@
 """
 SQLAlchemy models for TaskMaster entities.
 """
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Index, Table, Date
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Index, Table, Date,Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -31,7 +31,7 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     avatar_url = Column(String(255), nullable=True)
-    is_active = Column(Integer, default=1, nullable=False)  # Boolean as integer for SQLite
+    is_active = Column(Boolean, default=True, nullable=False)  # Boolean as integer for SQLite
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -51,7 +51,7 @@ class PasswordResetToken(Base):
     otp_hash = Column(String(255), nullable=False)  # Bcrypt hashed OTP
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     attempts = Column(Integer, default=0, nullable=False)  # Failed attempts counter
-    is_used = Column(Integer, default=0, nullable=False)  # Boolean as integer for SQLite
+    is_used = Column(Boolean, default=False, nullable=False)  # Boolean as integer for SQLite
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
@@ -66,7 +66,7 @@ class List(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     name = Column(String(100), nullable=False)
     color = Column(String(20), nullable=True)  # UI color identifier
-    is_default = Column(Integer, default=0)  # Boolean as integer for SQLite
+    is_default = Column(Boolean, default=False)  # Boolean as integer for SQLite
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -90,7 +90,7 @@ class Task(Base):
     priority = Column(Enum(PriorityEnum), nullable=False)
     status = Column(Enum(StatusEnum), nullable=False, default=StatusEnum.PENDING)
     due_date = Column(Date, nullable=True)
-    is_important = Column(Integer, default=0, nullable=False)  # Boolean as integer for SQLite
+    is_important = Column(Boolean, default=False, nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
